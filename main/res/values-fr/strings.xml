@@ -124,10 +124,24 @@
   <string name="log_image_description">Description</string>
   <string name="log_image_scale">Mise à l\'échelle</string>
   <string name="log_password_title">Mot de passe pour la visite :</string>
+  <string name="log_report_problem">Signaler un problème:</string>
   <string name="log_hint_log_password">Entrez votre mot de passe pour la visite</string>
   <string name="log_oc_team_comment">Commentaire de l\'équipe OC</string>
   <string name="log_your_saved_log">Visite enregistrée hors-ligne</string>
   <string name="log_empty_logbook">Le carnet de visites de cette cache est vide.</string>
+  <string name="log_problem_none">Aucun problème</string>
+  <string name="log_problem_needs_maintenance_label">Nécessite une maintenance</string>
+  <string name="log_problem_needs_maintenance_text">Ce géocacheur a signalé qu’il y a un problème avec cette cache.</string>
+  <string name="log_problem_log_full_label">Le journal de visites est plein</string>
+  <string name="log_problem_log_full_text">Ce géocacheur a signalé que le journal de visites est plein.</string>
+  <string name="log_problem_damaged_label">Le conteneur est abîmé</string>
+  <string name="log_problem_damaged_text">Ce géocacheur a signalé que le conteneur est abîmé.</string>
+  <string name="log_problem_missing_label">La cache peut être absente</string>
+  <string name="log_problem_missing_text">Cet géocacheur a signalé que le cache peut être absente.</string>
+  <string name="log_problem_other_label">Autre</string>
+  <string name="log_problem_other_text">Ce géocacheur a signalé qu’il y a un problème avec cette cache.</string>
+  <string name="log_problem_archive_label">La cache devrait être archivée</string>
+  <string name="log_problem_archive_text">Ce géocacheur a signalé que cette géocache doit être archivée. Un examinateur bénévole a été notifié.</string>
   <string-array name="log_image_scales">
     <item>Taille originale</item>
     <item>512 px</item>
@@ -230,6 +244,7 @@
   <string name="warn_rendertheme_missing">Le thème de la carte n\'a pas été trouvé.</string>
   <string name="warn_pocket_query_select">Aucune Pocket Query sélectionnée.</string>
   <string name="warn_no_pocket_query_found">Aucune Pocket Query trouvée en ligne.</string>
+  <string name="warn_invalid_character">Le caractère doit être une LETTRE ou un CHIFFRE</string>
   <string name="err_read_pocket_query_list">Erreur de lecture de la liste des Pocket Queries.</string>
   <string name="info_log_posted">Envoi de la visite réussi.</string>
   <string name="info_log_saved">Enregistrement de la visite réussie.</string>
@@ -238,15 +253,21 @@
   <string name="info_log_post_retry">Réessayer</string>
   <string name="info_log_post_save">Sauver hors-ligne</string>
   <string name="info_log_cleared">La visite a été effacée.</string>
+  <string name="info_waypoint_coordinates_cleared">Coordonnées effacées.</string>
   <string name="info_log_type_changed">Le type de visite a été modifié !</string>
+  <string name="info_log_report_problem_changed">La liste des problèmes connus a été mise à jour !</string>
   <string name="info_select_logimage_cancelled">La sélection ou l\'acquisition de l\'image a été annulée.</string>
   <string name="info_stored_image">Nouvelle image sauvée dans :</string>
   <string name="info_storing_static_maps">Sauvegarde des cartes statiques</string>
   <string name="info_cache_saved">La cache a été enregistrée en local</string>
+  <string name="warn_calculator_state_save">Veillez à enregistrer l\'étape si vous souhaitez conserver l\'état du calculateur.</string>
   <string name="err_trackable_log_not_anonymous">S\'identifier sur %1$s depuis c:geo ne peut se faire anonymement. Souhaitez-vous ouvrir les paramètres et remplir vos informations d\'identification pour %2$s ?</string>
   <string name="err_trackable_no_preference_activity">Désolé, impossible de trouver l\'écran de préférences.</string>
+  <string name="confirm_unsaved_changes_title">Modifications non enregistrées</string>
+  <string name="confirm_discard_wp_changes">Annuler les étapes non enregistrées ?</string>
   <string name="warn_discard_changes">Étape non enregistrée, vos modifications seront perdues !</string>
   <string name="err_request_popup_info">c:geo n\'a pas pu récupérer le contenu du popup de la cache.</string>
+  <string name="warn_log_load_additional_data">c:geo n\'a pas réussi à charger les données supplémentaires (objets voyageurs / points de favori) pour loguer.</string>
   <!-- location service -->
   <string name="loc_last">Dernière position</string>
   <string name="loc_net">Réseau</string>
@@ -288,6 +309,8 @@
     <item quantity="other">%d minutes</item>
   </plurals>
   <string name="caches_store_offline">Enregistrer localement</string>
+  <string name="caches_store_all">Tout enregistrer</string>
+  <string name="caches_store_unsaved">Enregistrer les nouvelles</string>
   <string name="caches_store_selected">Enregistrer la sélection</string>
   <string name="caches_history">Historique</string>
   <string name="caches_on_map">Afficher sur la carte</string>
@@ -390,8 +413,8 @@
   <string name="about_version">Version</string>
   <string name="about_changelog">Versions</string>
   <string name="about_system">Système</string>
-  <string name="about_donate">Dons</string>
-  <string name="about_donation_more">Donner pour le\ndéveloppement de c:geo</string>
+  <string name="about_donate">Nous soutenir</string>
+  <string name="about_donation_more">Visitez le site web pour plus d\'informations</string>
   <string name="about_contributors">Contributeurs</string>
   <string name="about_license">Licence</string>
   <string name="about_apache_license"><a href="">Apache License, Version 2.0</a></string>
@@ -508,8 +531,11 @@
   <string name="init_signature_template_number">Numéro de visite</string>
   <string name="init_signature_template_owner">Propriétaire</string>
   <string name="init_signature_template_name">Nom de la cache</string>
+  <string name="init_signature_template_difficulty">Difficulté</string>
+  <string name="init_signature_template_terrain">Terrain</string>
   <string name="init_signature_template_url">URL</string>
   <string name="init_signature_template_log">Texte de la visite</string>
+  <string name="init_signature_template_size">Taille</string>
   <string name="init_ratingwanted">Vote GCvote.com</string>
   <string name="init_summary_ratingwanted">Charger l\'évaluation de la cache depuis GCvote.com</string>
   <string name="init_friends_and_own_logs_wanted">Afficher vos visites / visites amis</string>
@@ -619,7 +645,7 @@
   <string name="init_force_orientation_sensor_title">Capteur d\'orientation</string>
   <string name="init_force_orientation_sensor_note">Sur certains appareils le capteur de rotation vectorielle utilisé par défaut se comporte de manière erratique et indique la mauvaise direction. Dans ce cas, un capteur alternatif (le capteur d\'orientation) peut donner de meilleurs résultats.</string>
   <string name="init_force_orientation_sensor">Forcer l\'utilisation du capteur d\'orientation</string>
-  <string name="init_create_memory_dump">Créer une image mémoire</string>
+  <string name="init_create_memory_dump">création mémoire vidage</string>
   <string name="init_memory_dump">Image mémoire</string>
   <string name="init_memory_dumped">Mémoire copiée dans %s</string>
   <string name="init_hardware_acceleration_title">Accélération graphique</string>
@@ -650,6 +676,9 @@
   <string name="feature_search_geocode">Rechercher ce code</string>
   <string name="feature_search_owner">Rechercher par Propriétaire</string>
   <string name="feature_search_finder">Rechercher par Découvreur</string>
+  <string name="init_mapsforge_api_title">API Mapsforge</string>
+  <string name="init_mfold_api">Ancienne version Mapsforge V3</string>
+  <string name="init_mfold_api_description">La version actuelle contient une version bêta de notre nouvelle carte Mapsforge. Si il vous manque certaines fonctionnalités ou rencontrez des problèmes, vous pouvez revenir à l\'ancienne version ici.</string>
   <string name="init_experimental_title">Fonctionnalités expérimentales</string>
   <string name="init_mfbeta">Carte Mapsforge beta par défaut</string>
   <string name="init_mfbeta_description">La version actuelle contient une version beta de notre nouvelle carte Mapsforge (fonctionnalité expérimentale). Cette nouvelle carte peut être activée ici par défaut pour la carte en temps réel et pour celle des listes.</string>
@@ -740,6 +769,11 @@
     <item quantity="one">il y a %d jour</item>
     <item quantity="other">il y a %d jours</item>
   </plurals>
+  <plurals name="cache_offline_about_time_months">
+    <item quantity="one">il y a environ %d mois</item>
+    <item quantity="other">about %d months ago</item>
+  </plurals>
+  <string name="cache_offline_about_time_year">il y a plus d\'un an</string>
   <string name="cache_offline_time_hour">une heure</string>
   <string name="cache_offline_time_hours">heures</string>
   <string name="cache_offline_time_days">jours</string>
@@ -880,6 +914,7 @@
   <string name="cache_event">Date</string>
   <string name="cache_location">Localisation</string>
   <string name="cache_coordinates">Coordonnées</string>
+  <string name="cache_calculator">Calculateur</string>
   <string name="cache_coordinates_original">Coordonnées d\'origine</string>
   <string name="cache_spoiler_images_title">Images indices</string>
   <string name="cache_log_types">Types de visite</string>
@@ -943,6 +978,7 @@
   <string name="waypoint">Étape</string>
   <string name="waypoint_coordinates">Coordonnées</string>
   <string name="waypoint_cache_coordinates">Coordonnées de la cache</string>
+  <string name="waypoint_calculate_coordinates">Calculer les coordonnées</string>
   <string name="waypoint_custom">Personnalisé</string>
   <string name="waypoint_my_coordinates">Ma position</string>
   <string name="waypoint_bearing">Relèvement</string>
@@ -950,6 +986,7 @@
   <string name="waypoint_name">Nom</string>
   <string name="waypoint_edit">Modifier</string>
   <string name="waypoint_copy_coordinates">Copier les coordonnées</string>
+  <string name="waypoint_clear_coordinates">Effacer les coordonnées</string>
   <string name="waypoint_delete">Supprimer</string>
   <string name="waypoint_edit_title">Modifier l\'étape</string>
   <string name="waypoint_add_title">Ajouter une étape</string>
@@ -977,6 +1014,7 @@
   <string name="waypoint_duplicate">Dupliquer le point de passage</string>
   <string name="waypoint_duplicated">Point de passage dupliqué</string>
   <string name="waypoint_copy_of">Copie de</string>
+  <string name="waypointcalc_notes_prompt">Entrez les notes ici…</string>
   <string name="search_history">Historique</string>
   <string name="search_history_empty">Aucune destination récente</string>
   <string name="search_remove_destination">Destination supprimée</string>
@@ -1397,8 +1435,8 @@
   <string name="status_new_rc" tools:ignore="UnusedResources">Une nouvelle version candidate est disponible.\nAppuyez ici pour l\'installer.</string>
   <string name="status_geocaching_change" tools:ignore="UnusedResources">Des changements récents sur Geocaching.com ont cassé c:geo.\nNous sommes en train de corriger. Revenez plus tard.</string>
   <string name="status_geocaching_livemap" tools:ignore="UnusedResources">Des changements récents sur Geocaching.com ont cassé la carte temps-réel.\nNous sommes en train de corriger. Revenez plus tard.</string>
-  <string name="status_geocaching_maintenance" tools:ignore="UnusedResources">Maintenance en cours sur geocaching.com.\nIl se peut que vous rencontriez des problèmes.</string>
-  <string name="status_closeout_warning" tools:ignore="UnusedResources">Vous utilisez une version d\'Android plus ancienne que 4.0. Les futures versions de c:geo pourraient ne pas être disponibles pour votre appareil.</string>
+  <string name="status_geocaching_maintenance" tools:ignore="UnusedResources">Maintenant en cours sur geocaching.com.\nIl se peut que vous rencontriez des problèmes.</string>
+  <string name="status_closeout_warning_41" tools:ignore="UnusedResources">Votre version d\'Android semble antérieure à 4.1. Les prochaines versions de c:geo pourraient ne plus fonctionner sur votre appareil.</string>
   <!-- text-to-speech for compass view -->
   <string name="tts_service">Boussole parlante</string>
   <string name="tts_start">Commencer à parler</string>
@@ -1443,8 +1481,10 @@
   <string name="cgeo_shortcut">Raccourci c:geo</string>
   <string name="create_shortcut">Créer un raccourci</string>
   <string name="send">Envoyer</string>
-  <string name="confirm_log_title">Type inhabituel pour une visite</string>
+  <string name="confirm_log_title">Type de visite spécial</string>
   <string name="confirm_log_message">Vous allez envoyer \'%s\'. Êtes-vous sûr(e) ?</string>
+  <string name="confirm_report_problem_title">Signaler un problème</string>
+  <string name="confirm_report_problem_message">Vous voulez signaler «%s». Êtes-vous sûr ?</string>
   <!-- Geokrety -->
   <string name="settings_activate_geokrety">Activer</string>
   <string name="init_geokrety">GeoKrety.org</string>
@@ -1508,10 +1548,15 @@
     <item quantity="one">%d point de passage extrait</item>
     <item quantity="other">%d points de passage extraits</item>
   </plurals>
+  <string name="link_gc_checker">Le vérificateur de coordonnées de geocaching.com est disponible en utilisant un navigateur</string>
   <!-- calendar adder -->
   <string name="event_fail">Impossible d\'ajouter l\'Événement au calendrier</string>
   <string name="init_low_disk_space">Espace disque faible</string>
   <string name="init_low_disk_space_message">L\'espace libre pour le répertoire de données est faible. Cela peut provoquer des dysfonctionnements de c:geo. Merci de libérer de l’espace.</string>
   <string name="init_confirm_debug">c:geo s’exécute en mode de débogage !</string>
   <string name="list_confirm_debug_message">Le mode débogage génère de l\'instabilité ! Souhaitez-vous désactiver le mode débogage ?</string>
+  <string name="err_select_logimage_upload_size">Image trop grande, merci de sélectionner une résolution inférieure.</string>
+  <string name="err_logimage_caption_required">Une légende est requise pour l’image</string>
+  <string name="waypoint_latitude_null">N/S --° --.---</string>
+  <string name="waypoint_longitude_null">E/W --° --.---</string>
 </resources>

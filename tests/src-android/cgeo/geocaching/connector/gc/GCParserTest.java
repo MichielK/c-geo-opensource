@@ -207,10 +207,10 @@ public class GCParserTest extends AbstractResourceInstrumentationTestCase {
 
     public void testWaypointParsing() {
         Geocache cache = parseCache(R.raw.gc366bq);
-        assertThat(cache.getWaypoints()).hasSize(13);
+        assertThat(cache.getWaypoints()).hasSize(14);
         //make sure that waypoints are not duplicated
         cache = parseCache(R.raw.gc366bq);
-        assertThat(cache.getWaypoints()).hasSize(13);
+        assertThat(cache.getWaypoints()).hasSize(14);
     }
 
     public static void testNoteParsingWaypointTypes() {
@@ -298,5 +298,12 @@ public class GCParserTest extends AbstractResourceInstrumentationTestCase {
                 .isEqualTo("https://www.dropbox.com/s/1kakwnpny8698hm/QR_Hintergrund.jpg?dl=1");
         assertThat(GCParser.fullScaleImageUrl("http://imgcdn.geocaching.com/track/display/33cee358-f692-4f90-ace0-80c5a2c60a5c.jpg"))
                 .isEqualTo("http://imgcdn.geocaching.com/track/33cee358-f692-4f90-ace0-80c5a2c60a5c.jpg");
+    }
+
+    public void testGetUsername() {
+        // Old style page
+        assertThat(GCParser.getUsername(MockedCache.readCachePage("GC2CJPF"))).isEqualTo("storc");
+        // New style page
+        assertThat(GCParser.getUsername(MockedCache.readCachePage("GC5BRQK"))).isEqualTo("kumy");
     }
 }

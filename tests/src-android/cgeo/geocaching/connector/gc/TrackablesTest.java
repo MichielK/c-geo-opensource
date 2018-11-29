@@ -4,7 +4,6 @@ import static org.assertj.core.api.Java6Assertions.assertThat;
 
 import cgeo.geocaching.log.LogEntry;
 import cgeo.geocaching.log.LogType;
-import cgeo.geocaching.log.TrackableLog;
 import cgeo.geocaching.models.Image;
 import cgeo.geocaching.models.Trackable;
 import cgeo.geocaching.test.AbstractResourceInstrumentationTestCase;
@@ -14,22 +13,6 @@ import cgeo.geocaching.utils.TextUtils;
 import java.util.List;
 
 public class TrackablesTest extends AbstractResourceInstrumentationTestCase {
-
-    public void testLogPageWithTrackables() {
-        final List<TrackableLog> tbLogs = GCParser.parseTrackableLog(getFileContent(R.raw.log_with_2tb));
-        assertThat(tbLogs).isNotNull();
-        assert tbLogs != null;
-        assertThat(tbLogs).hasSize(2);
-        final TrackableLog log = tbLogs.get(0);
-        assertThat(log.name).isEqualTo("Steffen's Kaiserwagen");
-        assertThat(log.trackCode).isEqualTo("1QG1EE");
-    }
-
-    public void testLogPageWithoutTrackables() {
-        final List<TrackableLog> tbLogs = GCParser.parseTrackableLog(getFileContent(R.raw.log_without_tb));
-        assertThat(tbLogs).isNotNull();
-        assertThat(tbLogs).isEmpty();
-    }
 
     public void testTrackable() {
         final Trackable trackable = getTB2R124();
@@ -78,6 +61,22 @@ public class TrackablesTest extends AbstractResourceInstrumentationTestCase {
         assertThat(trackable.getOrigin()).isNull();
     }
 
+    public void testParseTrackableWithRetrievedDate() {
+        final Trackable trackable = parseTrackable(R.raw.tb11jzk);
+        assertThat(trackable).isNotNull();
+        assertThat(trackable.getLogDate()).isNotNull();
+        assertThat(trackable.getLogType()).isEqualTo(LogType.RETRIEVED_IT);
+        assertThat(trackable.getLogGuid()).isEqualTo("2758cb91-a3b4-489f-9d99-1f5dd708c39f");
+    }
+
+    public void testParseTrackableWithDiscoveredDate() {
+        final Trackable trackable = parseTrackable(R.raw.tb84bz5);
+        assertThat(trackable).isNotNull();
+        assertThat(trackable.getLogDate()).isNotNull();
+        assertThat(trackable.getLogType()).isEqualTo(LogType.DISCOVERED_IT);
+        assertThat(trackable.getLogGuid()).isEqualTo("c8093cd3-db0d-40db-b9f3-3d1671309d34");
+    }
+
     public void testParseRelativeLink() {
         final Trackable trackable = parseTrackable(R.raw.tb4cwjx);
         assertThat(trackable).isNotNull();
@@ -113,6 +112,9 @@ public class TrackablesTest extends AbstractResourceInstrumentationTestCase {
         assertThat(trackable.getSpottedGuid()).isNull();
         assertThat(trackable.getSpottedType()).isEqualTo(Trackable.SPOTTED_OWNER);
         assertThat(trackable.getReleased()).isNotNull();
+        assertThat(trackable.getLogDate()).isNull();
+        assertThat(trackable.getLogType()).isNull();
+        assertThat(trackable.getLogGuid()).isNull();
         assertThat(trackable.getType()).isEqualTo("Travel Bug Dog Tag");
         final List<LogEntry> logs = trackable.getLogs();
         assertThat(logs).isNotNull();

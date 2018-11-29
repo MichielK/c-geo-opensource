@@ -6,11 +6,11 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.TestCase;
+import org.junit.Test;
 
-public class ParametersTest extends TestCase {
+public class ParametersTest {
 
-    static final List<Character> UNRESERVED = new ArrayList<>();
+    private static final List<Character> UNRESERVED = new ArrayList<>();
 
     static {
         // unreserved characters: ALPHA / DIGIT / "-" / "." / "_" / "~"
@@ -27,30 +27,27 @@ public class ParametersTest extends TestCase {
         UNRESERVED.add('~');
     }
 
-    public static void testException() {
-        try {
-            final Parameters params = new Parameters("aaa", "AAA", "bbb");
-            params.clear(); // this will never be invoked, but suppresses warnings about unused objects
-            fail("Exception not raised");
-        } catch (final InvalidParameterException e) {
-            // Ok
-        }
-        try {
-            final Parameters params = new Parameters("aaa", "AAA");
-            params.put("bbb", "BBB", "ccc");
-            fail("Exception not raised");
-        } catch (final InvalidParameterException e) {
-            // Ok
-        }
+    @Test(expected = InvalidParameterException.class)
+    public void testOddNumberExceptionInConstructor() {
+        final Parameters params = new Parameters("aaa", "AAA", "bbb");
+        params.clear(); // this will never be invoked, but suppresses warnings about unused objects
     }
 
-    public static void testMultipleValues() {
+    @Test(expected = InvalidParameterException.class)
+    public void testOddNumberExceptionInPut() {
+        final Parameters params = new Parameters("aaa", "AAA");
+        params.put("bbb", "BBB", "ccc");
+    }
+
+    @Test
+    public void testMultipleValues() {
         final Parameters params = new Parameters("aaa", "AAA", "bbb", "BBB");
         params.put("ccc", "CCC", "ddd", "DDD");
         assertThat(params.toString()).isEqualTo("aaa=AAA&bbb=BBB&ccc=CCC&ddd=DDD");
     }
 
-    public static void testSort() {
+    @Test
+    public void testSort() {
         final Parameters params = new Parameters();
         params.put("aaa", "AAA");
         params.put("ccc", "CCC");
@@ -60,21 +57,24 @@ public class ParametersTest extends TestCase {
         assertThat(params.toString()).isEqualTo("aaa=AAA&bbb=BBB&ccc=CCC");
     }
 
-    public static void testToString() {
+    @Test
+    public void testToString() {
         final Parameters params = new Parameters();
         params.put("name", "foo&bar");
         params.put("type", "moving");
         assertThat(params.toString()).isEqualTo("name=foo%26bar&type=moving");
     }
 
-    public static void testUnreservedCharactersMustNotBeEncoded() {
+    @Test
+    public void testUnreservedCharactersMustNotBeEncoded() {
         for (final Character c : UNRESERVED) {
             final String charAsString = String.valueOf(c);
-            assertEquals("wrong OAuth encoding for " + c, charAsString, Parameters.percentEncode(charAsString));
+            assertThat(charAsString).isEqualTo(Parameters.percentEncode(charAsString));
         }
     }
 
-    public static void testOtherCharactersMustBeEncoded() {
+    @Test
+    public void testOtherCharactersMustBeEncoded() {
         for (int i = 32; i < 127; i++) {
             final Character c = (char) i;
             if (!UNRESERVED.contains(c)) {
@@ -86,14 +86,28 @@ public class ParametersTest extends TestCase {
         }
     }
 
-    public static void testAsterisk() {
+    @Test
+    public void testAsterisk() {
         assertThat("*".equals(Parameters.percentEncode("*"))).isFalse();
     }
 
-    public static void testPercentEncoding() {
+    @Test
+    public void testPercentEncoding() {
         final Parameters params = new Parameters("oauth_callback", "callback://www.cgeo.org/");
         assertThat(params.toString()).isEqualTo("oauth_callback=callback://www.cgeo.org/");
         params.usePercentEncoding();
         assertThat(params.toString()).isEqualTo("oauth_callback=callback%3A%2F%2Fwww.cgeo.org%2F");
+    }
+
+    @Test
+    public void testMerge() {
+        final Parameters params1 = new Parameters("foo", "bar");
+        final Parameters params2 = new Parameters("baz", "xyzzy");
+        assertThat(Parameters.merge(params1)).isSameAs(params1);
+        assertThat(Parameters.merge(params1, null)).isSameAs(params1);
+        assertThat(Parameters.merge(null, params1)).isSameAs(params1);
+        assertThat(Parameters.merge(null, params1, null, params2, null)).isSameAs(params1);
+        assertThat(params1.size() == 4);
+        assertThat(params2.size() == 2);
     }
 }

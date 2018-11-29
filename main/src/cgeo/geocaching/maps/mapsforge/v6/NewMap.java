@@ -27,18 +27,14 @@ import cgeo.geocaching.maps.MapProviderFactory;
 import cgeo.geocaching.maps.MapState;
 import cgeo.geocaching.maps.interfaces.MapSource;
 import cgeo.geocaching.maps.interfaces.OnMapDragListener;
-import cgeo.geocaching.maps.mapsforge.MapsforgeMapProvider;
 import cgeo.geocaching.maps.mapsforge.MapsforgeMapSource;
 import cgeo.geocaching.maps.mapsforge.v6.caches.CachesBundle;
 import cgeo.geocaching.maps.mapsforge.v6.caches.GeoitemRef;
-import cgeo.geocaching.maps.mapsforge.v6.layers.DownloadLayer;
 import cgeo.geocaching.maps.mapsforge.v6.layers.HistoryLayer;
 import cgeo.geocaching.maps.mapsforge.v6.layers.ITileLayer;
 import cgeo.geocaching.maps.mapsforge.v6.layers.NavigationLayer;
 import cgeo.geocaching.maps.mapsforge.v6.layers.PositionLayer;
-import cgeo.geocaching.maps.mapsforge.v6.layers.RendererLayer;
 import cgeo.geocaching.maps.mapsforge.v6.layers.TapHandlerLayer;
-import cgeo.geocaching.maps.mapsforge.v6.layers.ThunderforestMap;
 import cgeo.geocaching.maps.routing.Routing;
 import cgeo.geocaching.maps.routing.RoutingMode;
 import cgeo.geocaching.models.Geocache;
@@ -58,11 +54,13 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Resources.NotFoundException;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.ActionBar;
@@ -82,6 +80,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
@@ -92,24 +91,26 @@ import io.reactivex.disposables.CompositeDisposable;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.mapsforge.core.model.LatLong;
+import org.mapsforge.core.util.Parameters;
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory;
 import org.mapsforge.map.android.graphics.AndroidResourceBitmap;
+import org.mapsforge.map.android.input.MapZoomControls;
 import org.mapsforge.map.android.util.AndroidUtil;
 import org.mapsforge.map.layer.Layers;
 import org.mapsforge.map.layer.cache.TileCache;
-import org.mapsforge.map.layer.download.tilesource.OpenStreetMapMapnik;
 import org.mapsforge.map.layer.renderer.TileRendererLayer;
 import org.mapsforge.map.model.DisplayModel;
-import org.mapsforge.map.reader.MapFile;
-import org.mapsforge.map.reader.ReadBuffer;
 import org.mapsforge.map.rendertheme.ExternalRenderTheme;
 import org.mapsforge.map.rendertheme.InternalRenderTheme;
 import org.mapsforge.map.rendertheme.XmlRenderTheme;
+import org.mapsforge.map.rendertheme.XmlRenderThemeMenuCallback;
+import org.mapsforge.map.rendertheme.XmlRenderThemeStyleLayer;
+import org.mapsforge.map.rendertheme.XmlRenderThemeStyleMenu;
 import org.mapsforge.map.rendertheme.rule.RenderThemeHandler;
 import org.xmlpull.v1.XmlPullParserException;
 
 @SuppressLint("ClickableViewAccessibility")
-public class NewMap extends AbstractActionBarActivity {
+public class NewMap extends AbstractActionBarActivity implements XmlRenderThemeMenuCallback, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private MfMapView mapView;
     private TileCache tileCache;
@@ -119,6 +120,9 @@ public class NewMap extends AbstractActionBarActivity {
     private NavigationLayer navigationLayer;
     private CachesBundle caches;
     private final MapHandlers mapHandlers = new MapHandlers(new TapHandler(this), new DisplayHandler(this), new ShowProgressHandler(this));
+
+    private XmlRenderThemeStyleMenu styleMenu;
+    private SharedPreferences sharedPreferences;
 
     private DistanceView distanceView;
 
@@ -131,6 +135,8 @@ public class NewMap extends AbstractActionBarActivity {
     private ProgressDialog waitDialog;
     private LoadDetails loadDetailsThread;
 
+    private String themeSettingsPref = "";
+
     private final UpdateLoc geoDirUpdate = new UpdateLoc(this);
     /**
      * initialization with an empty subscription to make static code analysis tools more happy
@@ -140,7 +146,7 @@ public class NewMap extends AbstractActionBarActivity {
     private MapOptions mapOptions;
     private TargetView targetView;
 
-    private static boolean followMyLocation;
+    private static boolean followMyLocation = true;
 
     private static final String BUNDLE_MAP_STATE = "mapState";
     private static final String BUNDLE_TRAIL_HISTORY = "trailHistory";
@@ -160,10 +166,16 @@ public class NewMap extends AbstractActionBarActivity {
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Log.d("NewMap: onCreate");
+
+        ResourceBitmapCacheMonitor.addRef();
         AndroidGraphicFactory.createInstance(this.getApplication());
 
+        this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        this.sharedPreferences.registerOnSharedPreferenceChangeListener(this);
+
         // some tiles are rather big, see https://github.com/mapsforge/mapsforge/issues/868
-        ReadBuffer.setMaximumBufferSize(6500000);
+        Parameters.MAXIMUM_BUFFER_SIZE = 6500000;
 
         // Get parameters from the intent
         mapOptions = new MapOptions(this, getIntent().getExtras());
@@ -191,8 +203,6 @@ public class NewMap extends AbstractActionBarActivity {
         mapView.setClickable(true);
         mapView.getMapScaleBar().setVisible(true);
         mapView.setBuiltInZoomControls(true);
-        mapView.getMapZoomControls().setZoomLevelMin((byte) 10);
-        mapView.getMapZoomControls().setZoomLevelMax((byte) 20);
 
         // create a tile cache of suitable size. always initialize it based on the smallest tile size to expect (256 for online tiles)
         tileCache = AndroidUtil.createTileCache(this, "mapcache", 256, 1f, this.mapView.getModel().frameBufferModel.getOverdrawFactor());
@@ -204,7 +214,7 @@ public class NewMap extends AbstractActionBarActivity {
         // prepare initial settings of mapView
         if (mapOptions.mapState != null) {
             this.mapView.getModel().mapViewPosition.setCenter(MapsforgeUtils.toLatLong(mapOptions.mapState.getCenter()));
-            this.mapView.getModel().mapViewPosition.setZoomLevel((byte) mapOptions.mapState.getZoomLevel());
+            this.mapView.setMapZoomLevel((byte) mapOptions.mapState.getZoomLevel());
             this.targetGeocode = mapOptions.mapState.getTargetGeocode();
             this.lastNavTarget = mapOptions.mapState.getLastNavTarget();
             mapOptions.isLiveEnabled = mapOptions.mapState.isLiveEnabled();
@@ -213,22 +223,31 @@ public class NewMap extends AbstractActionBarActivity {
             final Viewport viewport = DataStore.getBounds(mapOptions.searchResult.getGeocodes());
 
             if (viewport != null) {
-                mapView.zoomToViewport(viewport);
+                postZoomToViewport(viewport);
             }
         } else if (StringUtils.isNotEmpty(mapOptions.geocode)) {
             final Viewport viewport = DataStore.getBounds(mapOptions.geocode);
 
             if (viewport != null) {
-                mapView.zoomToViewport(viewport);
+                postZoomToViewport(viewport);
             }
             targetGeocode = mapOptions.geocode;
         } else if (mapOptions.coords != null) {
-            mapView.zoomToViewport(new Viewport(mapOptions.coords, 0, 0));
+            postZoomToViewport(new Viewport(mapOptions.coords, 0, 0));
         } else {
-            mapView.zoomToViewport(new Viewport(Settings.getMapCenter().getCoords(), 0, 0));
+            postZoomToViewport(new Viewport(Settings.getMapCenter().getCoords(), 0, 0));
         }
         prepareFilterBar();
         Routing.connect();
+    }
+
+    private void postZoomToViewport(final Viewport viewport) {
+        mapView.post(new Runnable() {
+            @Override
+            public void run() {
+                mapView.zoomToViewport(viewport);
+            }
+        });
     }
 
     @Override
@@ -253,13 +272,7 @@ public class NewMap extends AbstractActionBarActivity {
         for (final MapSource mapSource : MapProviderFactory.getMapSources()) {
             final MenuItem menuItem = menu.findItem(mapSource.getNumericalId());
             if (menuItem != null) {
-                if (mapSource instanceof MapsforgeMapProvider.OfflineMapSource) {
-                    menuItem.setVisible(mapSource.isAvailable());
-                } else if (mapSource instanceof MapsforgeMapSource) {
-                    menuItem.setVisible(mapSource.isAvailable());
-                } else {
-                    menuItem.setVisible(false);
-                }
+                menuItem.setVisible(mapSource.isAvailable());
             }
         }
 
@@ -272,8 +285,13 @@ public class NewMap extends AbstractActionBarActivity {
             }
             itemMapLive.setVisible(mapOptions.coords == null);
 
+            final Set<String> visibleCacheGeocodes = caches.getVisibleCacheGeocodes();
+
             menu.findItem(R.id.menu_store_caches).setVisible(false);
-            menu.findItem(R.id.menu_store_caches).setVisible(!caches.isDownloading() && caches.getVisibleItemsCount() > 0);
+            menu.findItem(R.id.menu_store_caches).setVisible(!caches.isDownloading() && !visibleCacheGeocodes.isEmpty());
+
+            menu.findItem(R.id.menu_store_unsaved_caches).setVisible(false);
+            menu.findItem(R.id.menu_store_unsaved_caches).setVisible(!caches.isDownloading() && new SearchResult(visibleCacheGeocodes).hasUnsavedCaches());
 
             menu.findItem(R.id.menu_mycaches_mode).setChecked(Settings.isExcludeMyCaches());
             menu.findItem(R.id.menu_disabled_mode).setChecked(Settings.isExcludeDisabledCaches());
@@ -283,8 +301,9 @@ public class NewMap extends AbstractActionBarActivity {
             menu.findItem(R.id.menu_trail_mode).setChecked(Settings.isMapTrail());
 
             menu.findItem(R.id.menu_theme_mode).setVisible(tileLayerHasThemes());
+            menu.findItem(R.id.menu_theme_options).setVisible(styleMenu != null);
 
-            menu.findItem(R.id.menu_as_list).setVisible(!caches.isDownloading() && caches.getVisibleItemsCount() > 0);
+            menu.findItem(R.id.menu_as_list).setVisible(!caches.isDownloading() && caches.getVisibleCachesCount() > 1);
 
             menu.findItem(R.id.submenu_strategy).setVisible(mapOptions.isLiveEnabled);
 
@@ -362,28 +381,9 @@ public class NewMap extends AbstractActionBarActivity {
                 }
                 return true;
             case R.id.menu_store_caches:
-                if (!caches.isDownloading()) {
-                    final Set<String> geocodes = caches.getVisibleGeocodes();
-
-                    if (geocodes.isEmpty()) {
-                        ActivityMixin.showToast(this, res.getString(R.string.warn_save_nothing));
-
-                        return true;
-                    }
-
-                    if (Settings.getChooseList()) {
-                        // let user select list to store cache in
-                        new StoredList.UserInterface(this).promptForMultiListSelection(R.string.list_title, new Action1<Set<Integer>>() {
-                            @Override
-                            public void call(final Set<Integer> selectedListIds) {
-                                storeCaches(geocodes, selectedListIds);
-                            }
-                        }, true, Collections.singleton(StoredList.TEMPORARY_LIST.id), false);
-                    } else {
-                        storeCaches(geocodes, Collections.singleton(StoredList.STANDARD_LIST_ID));
-                    }
-                }
-                return true;
+                return storeCaches(caches.getVisibleCacheGeocodes());
+            case R.id.menu_store_unsaved_caches:
+                return storeCaches(getUnsavedGeocodes(caches.getVisibleCacheGeocodes()));
             case R.id.menu_circle_mode:
                 //                overlayCaches.switchCircles();
                 //                mapView.repaintRequired(overlayCaches);
@@ -408,49 +408,49 @@ public class NewMap extends AbstractActionBarActivity {
             case R.id.menu_theme_mode:
                 selectMapTheme();
                 return true;
-            case R.id.menu_as_list: {
-                CacheListActivity.startActivityMap(this, new SearchResult(caches.getVisibleGeocodes()));
+            case R.id.menu_theme_options:
+                final Intent intent = new Intent(this, RenderThemeSettings.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+                if (styleMenu != null) {
+                    intent.putExtra(RenderThemeSettings.RENDERTHEME_MENU, styleMenu);
+                }
+                startActivity(intent);
                 return true;
-            }
-            case R.id.menu_strategy_fast: {
+            case R.id.menu_as_list:
+                CacheListActivity.startActivityMap(this, new SearchResult(caches.getVisibleCacheGeocodes()));
+                return true;
+            case R.id.menu_strategy_fast:
                 item.setChecked(true);
                 Settings.setLiveMapStrategy(LivemapStrategy.FAST);
                 return true;
-            }
-            case R.id.menu_strategy_auto: {
+            case R.id.menu_strategy_auto:
                 item.setChecked(true);
                 Settings.setLiveMapStrategy(LivemapStrategy.AUTO);
                 return true;
-            }
-            case R.id.menu_strategy_detailed: {
+            case R.id.menu_strategy_detailed:
                 item.setChecked(true);
                 Settings.setLiveMapStrategy(LivemapStrategy.DETAILED);
                 return true;
-            }
-            case R.id.menu_routing_straight: {
+            case R.id.menu_routing_straight:
                 item.setChecked(true);
                 Settings.setRoutingMode(RoutingMode.STRAIGHT);
                 navigationLayer.requestRedraw();
                 return true;
-            }
-            case R.id.menu_routing_walk: {
+            case R.id.menu_routing_walk:
                 item.setChecked(true);
                 Settings.setRoutingMode(RoutingMode.WALK);
                 navigationLayer.requestRedraw();
                 return true;
-            }
-            case R.id.menu_routing_bike: {
+            case R.id.menu_routing_bike:
                 item.setChecked(true);
                 Settings.setRoutingMode(RoutingMode.BIKE);
                 navigationLayer.requestRedraw();
                 return true;
-            }
-            case R.id.menu_routing_car: {
+            case R.id.menu_routing_car:
                 item.setChecked(true);
                 Settings.setRoutingMode(RoutingMode.CAR);
                 navigationLayer.requestRedraw();
                 return true;
-            }
             case R.id.menu_hint:
                 menuShowHint();
                 return true;
@@ -461,11 +461,44 @@ public class NewMap extends AbstractActionBarActivity {
                 final MapSource mapSource = MapProviderFactory.getMapSource(id);
                 if (mapSource != null) {
                     item.setChecked(true);
-                    setMapSource(mapSource);
+                    changeMapSource(mapSource);
                     return true;
                 }
         }
         return false;
+    }
+
+    private Set<String> getUnsavedGeocodes(final Set<String> geocodes) {
+        final Set<String> unsavedGeocodes = new HashSet<>();
+
+        for (final String geocode : geocodes) {
+            if (!DataStore.isOffline(geocode, null)) {
+                unsavedGeocodes.add(geocode);
+            }
+        }
+        return unsavedGeocodes;
+    }
+
+    private boolean storeCaches(final Set<String> geocodes) {
+        if (!caches.isDownloading()) {
+            if (geocodes.isEmpty()) {
+                ActivityMixin.showToast(this, res.getString(R.string.warn_save_nothing));
+                return true;
+            }
+
+            if (Settings.getChooseList()) {
+                // let user select list to store cache in
+                new StoredList.UserInterface(this).promptForMultiListSelection(R.string.list_title, new Action1<Set<Integer>>() {
+                    @Override
+                    public void call(final Set<Integer> selectedListIds) {
+                        storeCaches(geocodes, selectedListIds);
+                    }
+                }, true, Collections.singleton(StoredList.TEMPORARY_LIST.id), false);
+            } else {
+                storeCaches(geocodes, Collections.singleton(StoredList.STANDARD_LIST_ID));
+            }
+        }
+        return true;
     }
 
     private void menuCompass() {
@@ -495,8 +528,7 @@ public class NewMap extends AbstractActionBarActivity {
     }
 
     /**
-     * @param view
-     *            Not used here, required by layout
+     * @param view Not used here, required by layout
      */
     public void showFilterMenu(final View view) {
         // do nothing, the filter bar only shows the global filter
@@ -568,7 +600,7 @@ public class NewMap extends AbstractActionBarActivity {
             rendererLayer.setXmlRenderTheme(InternalRenderTheme.OSMARENDER);
         } else {
             try {
-                final XmlRenderTheme xmlRenderTheme = new ExternalRenderTheme(new File(themePath));
+                final XmlRenderTheme xmlRenderTheme = new ExternalRenderTheme(new File(themePath), this);
                 // Validate the theme file
                 RenderThemeHandler.getRenderTheme(AndroidGraphicFactory.INSTANCE, new DisplayModel(), xmlRenderTheme);
                 rendererLayer.setXmlRenderTheme(xmlRenderTheme);
@@ -586,34 +618,57 @@ public class NewMap extends AbstractActionBarActivity {
         rendererLayer.requestRedraw();
     }
 
-    private void setMapSource(@NonNull final MapSource mapSource) {
-        // Update mapsource in settings
-        Settings.setMapSource(mapSource);
+    private void changeMapSource(@NonNull final MapSource newSource) {
+        final MapSource oldSource = Settings.getMapSource();
+        final boolean restartRequired = !MapProviderFactory.isSameActivity(oldSource, newSource);
 
-        switchTileLayer(mapSource);
+        // Update MapSource in settings
+        Settings.setMapSource(newSource);
+
+        if (restartRequired) {
+            mapRestart();
+        } else if (mapView != null) {  // changeMapSource can be called by onCreate()
+            switchTileLayer(newSource);
+        }
     }
 
-    private void switchTileLayer(final MapSource mapSource) {
-        // Create new render layer, if mapfile exists
+    /**
+     * Restart the current activity with the default map source.
+     */
+    private void mapRestart() {
+        mapOptions.mapState = currentMapState();
+        finish();
+        mapOptions.startIntent(this, Settings.getMapProvider().getMapClass());
+    }
+
+    /**
+     * Get the current map state from the map view if it exists or from the mapStateIntent field otherwise.
+     *
+     * @return the current map state as an array of int, or null if no map state is available
+     */
+    private MapState currentMapState() {
+        if (mapView == null) {
+            return null;
+        }
+        final Geopoint mapCenter = mapView.getViewport().getCenter();
+        return new MapState(mapCenter.getCoords(), mapView.getMapZoomLevel(), followMyLocation, false, targetGeocode, lastNavTarget, mapOptions.isLiveEnabled, mapOptions.isStoredEnabled);
+    }
+
+
+    private void switchTileLayer(final MapSource newSource) {
         final ITileLayer oldLayer = this.tileLayer;
         ITileLayer newLayer = null;
-        if (mapSource instanceof MapsforgeMapProvider.OfflineMapSource) {
-            this.mapView.getModel().displayModel.setFixedTileSize(0);
-            final File mapFile = NewMap.getMapFile();
-            if (mapFile != null && mapFile.exists()) {
-                newLayer = new RendererLayer(tileCache, new MapFile(mapFile), this.mapView.getModel().mapViewPosition, false, true, false, AndroidGraphicFactory.INSTANCE);
-
-            }
-        } else {
-            this.mapView.getModel().displayModel.setFixedTileSize(256);
-            if (mapSource.getNumericalId() == MapsforgeMapProvider.MAPSFORGE_MAPNIK_ID.hashCode()) {
-                newLayer = new DownloadLayer(tileCache, this.mapView.getModel().mapViewPosition, OpenStreetMapMapnik.INSTANCE, AndroidGraphicFactory.INSTANCE);
-            } else if (mapSource.getNumericalId() == MapsforgeMapProvider.MAPSFORGE_CYCLEMAP_ID.hashCode()) {
-                newLayer = new DownloadLayer(tileCache, this.mapView.getModel().mapViewPosition, ThunderforestMap.INSTANCE, AndroidGraphicFactory.INSTANCE);
-            }
+        if (newSource instanceof MapsforgeMapSource) {
+            newLayer = ((MapsforgeMapSource) newSource).createTileLayer(tileCache, this.mapView.getModel().mapViewPosition);
         }
+
         // Exchange layer
         if (newLayer != null) {
+            this.mapView.getModel().displayModel.setFixedTileSize(newLayer.getFixedTileSize());
+            final MapZoomControls zoomControls = mapView.getMapZoomControls();
+            zoomControls.setZoomLevelMax(newLayer.getZoomLevelMax());
+            zoomControls.setZoomLevelMin(newLayer.getZoomLevelMin());
+
             final Layers layers = this.mapView.getLayerManager().getLayers();
             int index = 0;
             if (oldLayer != null) {
@@ -657,6 +712,7 @@ public class NewMap extends AbstractActionBarActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        Log.d("NewMap: onResume");
 
         resumeTileLayer();
     }
@@ -664,6 +720,7 @@ public class NewMap extends AbstractActionBarActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        Log.d("NewMap: onStart");
 
         initializeLayers();
     }
@@ -729,6 +786,7 @@ public class NewMap extends AbstractActionBarActivity {
 
     @Override
     public void onPause() {
+        Log.d("NewMap: onPause");
 
         savePrefs();
 
@@ -739,6 +797,7 @@ public class NewMap extends AbstractActionBarActivity {
 
     @Override
     protected void onStop() {
+        Log.d("NewMap: onStop");
 
         waitDialog = null;
         terminateLayers();
@@ -769,8 +828,7 @@ public class NewMap extends AbstractActionBarActivity {
     /**
      * store caches, invoked by "store offline" menu item
      *
-     * @param listIds
-     *            the lists to store the caches in
+     * @param listIds the lists to store the caches in
      */
     private void storeCaches(final Set<String> geocodes, final Set<Integer> listIds) {
 
@@ -813,10 +871,12 @@ public class NewMap extends AbstractActionBarActivity {
 
     @Override
     protected void onDestroy() {
+        Log.d("NewMap: onDestroy");
+        this.sharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
         this.tileCache.destroy();
         this.mapView.getModel().mapViewPosition.destroy();
         this.mapView.destroy();
-        AndroidResourceBitmap.clearResourceBitmaps();
+        ResourceBitmapCacheMonitor.release();
 
         Routing.disconnect();
         super.onDestroy();
@@ -833,7 +893,7 @@ public class NewMap extends AbstractActionBarActivity {
     }
 
     private MapState prepareMapState() {
-        return new MapState(MapsforgeUtils.toGeopoint(mapView.getModel().mapViewPosition.getCenter()), mapView.getModel().mapViewPosition.getZoomLevel(), followMyLocation, false, targetGeocode, lastNavTarget, mapOptions.isLiveEnabled, mapOptions.isStoredEnabled);
+        return new MapState(MapsforgeUtils.toGeopoint(mapView.getModel().mapViewPosition.getCenter()), mapView.getMapZoomLevel(), followMyLocation, false, targetGeocode, lastNavTarget, mapOptions.isLiveEnabled, mapOptions.isStoredEnabled);
     }
 
     private void centerMap(final Geopoint geopoint) {
@@ -875,6 +935,36 @@ public class NewMap extends AbstractActionBarActivity {
         }
     }
 
+    @Override
+    public Set<String> getCategories(final XmlRenderThemeStyleMenu style) {
+        styleMenu = style;
+        themeSettingsPref = style.getId();
+        final String id = this.sharedPreferences.getString(styleMenu.getId(), styleMenu.getDefaultValue());
+
+        final XmlRenderThemeStyleLayer baseLayer = styleMenu.getLayer(id);
+        if (baseLayer == null) {
+            Log.w("Invalid style " + id);
+            return null;
+        }
+        final Set<String> result = baseLayer.getCategories();
+
+        // add the categories from overlays that are enabled
+        for (final XmlRenderThemeStyleLayer overlay : baseLayer.getOverlays()) {
+            if (this.sharedPreferences.getBoolean(overlay.getId(), overlay.isEnabled())) {
+                result.addAll(overlay.getCategories());
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String s) {
+        if (StringUtils.equals(s, themeSettingsPref)) {
+            AndroidUtil.restartActivity(this);
+        }
+    }
+
     // set my location listener
     private static class MyLocationListener implements View.OnClickListener {
 
@@ -904,16 +994,6 @@ public class NewMap extends AbstractActionBarActivity {
         if (followMyLocation) {
             centerMap(geo.getCoords());
         }
-    }
-
-    @Nullable
-    private static File getMapFile() {
-        final String mapFileName = Settings.getMapFile();
-        if (StringUtils.isNotEmpty(mapFileName)) {
-            return new File(mapFileName);
-        }
-
-        return null;
     }
 
     private static final class DisplayHandler extends Handler {
@@ -1015,18 +1095,21 @@ public class NewMap extends AbstractActionBarActivity {
     }
 
     private int countVisibleCaches() {
-        return caches != null ? caches.getVisibleItemsCount() : 0;
+        return caches != null ? caches.getVisibleCachesCount() : 0;
     }
 
     private int countTotalCaches() {
-        return caches != null ? caches.getItemsCount() : 0;
+        return caches != null ? caches.getCachesCount() : 0;
     }
 
-    /** Updates the progress. */
+    /**
+     * Updates the progress.
+     */
     private static final class ShowProgressHandler extends Handler {
         private int counter = 0;
 
-        @NonNull private final WeakReference<NewMap> mapRef;
+        @NonNull
+        private final WeakReference<NewMap> mapRef;
 
         ShowProgressHandler(@NonNull final NewMap map) {
             this.mapRef = new WeakReference<>(map);
@@ -1140,7 +1223,8 @@ public class NewMap extends AbstractActionBarActivity {
         /**
          * weak reference to the outer class
          */
-        @NonNull private final WeakReference<NewMap> mapRef;
+        @NonNull
+        private final WeakReference<NewMap> mapRef;
 
         UpdateLoc(@NonNull final NewMap map) {
             mapRef = new WeakReference<>(map);
@@ -1154,7 +1238,7 @@ public class NewMap extends AbstractActionBarActivity {
         }
 
         @NonNull
-        public Location getCurrenLocation() {
+        public Location getCurrentLocation() {
             return currentLocation;
         }
 
@@ -1262,8 +1346,9 @@ public class NewMap extends AbstractActionBarActivity {
 
             final LayoutInflater inflater = LayoutInflater.from(this);
             final ListAdapter adapter = new ArrayAdapter<GeoitemRef>(this, R.layout.cacheslist_item_select, sorted) {
+                @NonNull
                 @Override
-                public View getView(final int position, final View convertView, final ViewGroup parent) {
+                public View getView(final int position, final View convertView, @NonNull final ViewGroup parent) {
 
                     final View view = convertView == null ? inflater.inflate(R.layout.cacheslist_item_select, parent, false) : convertView;
                     final TextView tv = (TextView) view.findViewById(R.id.text);
@@ -1275,16 +1360,24 @@ public class NewMap extends AbstractActionBarActivity {
                     tv.setCompoundDrawablesWithIntrinsicBounds(item.getMarkerId(), 0, 0, 0);
 
                     final TextView infoView = (TextView) view.findViewById(R.id.info);
-                    infoView.setText(item.getItemCode());
+                    final StringBuilder text = new StringBuilder(item.getItemCode());
+                    if (item.getType() == CoordinatesType.WAYPOINT && StringUtils.isNotEmpty(item.getGeocode())) {
+                        text.append(Formatter.SEPARATOR).append(item.getGeocode());
+                        final Geocache cache = DataStore.loadCache(item.getGeocode(), LoadFlags.LOAD_CACHE_OR_DB);
+                        if (cache != null) {
+                            text.append(Formatter.SEPARATOR).append(cache.getName());
+                        }
+                    }
+                    infoView.setText(text.toString());
 
                     return view;
                 }
             };
 
             final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(res.getString(R.string.map_select_multiple_items))
-                .setAdapter(adapter, new SelectionClickListener(sorted))
-                .create();
+                    .setTitle(res.getString(R.string.map_select_multiple_items))
+                    .setAdapter(adapter, new SelectionClickListener(sorted))
+                    .create();
             dialog.setCanceledOnTouchOutside(true);
             dialog.show();
 
@@ -1363,12 +1456,14 @@ public class NewMap extends AbstractActionBarActivity {
 
     private static class RequestDetailsThread extends Thread {
 
-        @NonNull private final Geocache cache;
-        @NonNull private final WeakReference<NewMap> map;
+        @NonNull
+        private final Geocache cache;
+        @NonNull
+        private final WeakReference<NewMap> mapRef;
 
         RequestDetailsThread(@NonNull final Geocache cache, @NonNull final NewMap map) {
             this.cache = cache;
-            this.map = new WeakReference<>(map);
+            this.mapRef = new WeakReference<>(map);
         }
 
         public boolean requestRequired() {
@@ -1377,13 +1472,14 @@ public class NewMap extends AbstractActionBarActivity {
 
         @Override
         public void run() {
-            final NewMap map = this.map.get();
+            final NewMap map = this.mapRef.get();
             if (map == null) {
                 return;
             }
             if (requestRequired()) {
                 try {
-                /* final SearchResult search = */GCMap.searchByGeocodes(Collections.singleton(cache.getGeocode()));
+                    /* final SearchResult search = */
+                    GCMap.searchByGeocodes(Collections.singleton(cache.getGeocode()));
                 } catch (final Exception ex) {
                     Log.w("Error requesting cache popup info", ex);
                     ActivityMixin.showToast(map, R.string.err_request_popup_info);
@@ -1436,8 +1532,10 @@ public class NewMap extends AbstractActionBarActivity {
                 }
             }
 
-            // we're done
-            caches.invalidate(geocodes);
+            // we're done, but map might even have been closed.
+            if (caches != null) {
+                caches.invalidate(geocodes);
+            }
             invalidateOptionsMenuCompatible();
             handler.sendEmptyMessage(FINISHED_LOADING_DETAILS);
         }
@@ -1459,7 +1557,7 @@ public class NewMap extends AbstractActionBarActivity {
                     }
                     if (distanceView != null) {
                         distanceView.setDestination(targetInfo.coords);
-                        distanceView.setCoordinates(geoDirUpdate.getCurrenLocation());
+                        distanceView.setCoordinates(geoDirUpdate.getCurrentLocation());
                     }
                     if (StringUtils.isNotBlank(targetInfo.geocode)) {
                         targetGeocode = targetInfo.geocode;
@@ -1478,5 +1576,27 @@ public class NewMap extends AbstractActionBarActivity {
                 caches.invalidate(changedGeocodes);
             }
         }
+    }
+
+    private static class ResourceBitmapCacheMonitor {
+
+        private static int refCount = 0;
+
+        static synchronized void addRef() {
+            refCount++;
+            Log.d("ResourceBitmapCacheMonitor.addRef");
+        }
+
+        static synchronized void release() {
+            if (refCount > 0) {
+                refCount--;
+                Log.d("ResourceBitmapCacheMonitor.release");
+                if (refCount == 0) {
+                    Log.d("ResourceBitmapCacheMonitor.clearResourceBitmaps");
+                    AndroidResourceBitmap.clearResourceBitmaps();
+                }
+            }
+        }
+
     }
 }

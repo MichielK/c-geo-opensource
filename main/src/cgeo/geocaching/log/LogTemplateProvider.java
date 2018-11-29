@@ -9,14 +9,14 @@ import cgeo.geocaching.models.Trackable;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.utils.Formatter;
 
-import org.apache.commons.lang3.StringUtils;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
 import android.support.annotation.StringRes;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Provides all the available templates for logging.
@@ -185,6 +185,36 @@ public final class LogTemplateProvider {
                 final Geocache cache = context.getCache();
                 if (cache != null) {
                     return cache.getName();
+                }
+                return StringUtils.EMPTY;
+            }
+        });
+        templates.add(new LogTemplate("DIFFICULTY", R.string.init_signature_template_difficulty) {
+            @Override
+            public String getValue(final LogContext context) {
+                final Geocache cache = context.getCache();
+                if (cache != null) {
+                    return String.valueOf(cache.getDifficulty());
+                }
+                return StringUtils.EMPTY;
+            }
+        });
+        templates.add(new LogTemplate("TERRAIN", R.string.init_signature_template_terrain) {
+            @Override
+            public String getValue(final LogContext context) {
+                final Geocache cache = context.getCache();
+                if (cache != null) {
+                    return String.valueOf(cache.getTerrain());
+                }
+                return StringUtils.EMPTY;
+            }
+        });
+        templates.add(new LogTemplate("SIZE", R.string.init_signature_template_size) {
+            @Override
+            public String getValue(final LogContext context) {
+                final Geocache cache = context.getCache();
+                if (cache != null) {
+                    return cache.getSize().getL10n();
                 }
                 return StringUtils.EMPTY;
             }

@@ -1,9 +1,10 @@
 package cgeo.geocaching.connector.oc;
 
-import cgeo.geocaching.CgeoApplication;
-import cgeo.geocaching.R;
+import static android.util.Base64.DEFAULT;
+
 import cgeo.geocaching.connector.ConnectorFactory;
 import cgeo.geocaching.connector.IConnector;
+import cgeo.geocaching.connector.ImageResult;
 import cgeo.geocaching.connector.LogResult;
 import cgeo.geocaching.connector.gc.GCConnector;
 import cgeo.geocaching.connector.oc.OCApiConnector.ApiSupport;
@@ -21,6 +22,7 @@ import cgeo.geocaching.location.GeopointFormatter;
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.log.LogEntry;
 import cgeo.geocaching.log.LogType;
+import cgeo.geocaching.log.ReportProblemType;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.models.Image;
 import cgeo.geocaching.models.Trackable;
@@ -38,9 +40,14 @@ import cgeo.geocaching.utils.SynchronizedDateFormat;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Base64;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -53,11 +60,16 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.Response;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -118,6 +130,7 @@ final class OkapiClient {
     private static final String CACHE_MY_NOTES = "my_notes";
     private static final String CACHE_TRACKABLES_COUNT = "trackables_count";
     private static final String CACHE_TRACKABLES = "trackables";
+    private static final String CACHE_USER_PROFILE = "profile_url";
 
     private static final String TRK_GEOCODE = "code";
     private static final String TRK_NAME = "name";
@@ -153,6 +166,8 @@ final class OkapiClient {
 
     private static final Pattern PATTERN_TIMEZONE = Pattern.compile("([+-][01][0-9]):([03])0");
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private OkapiClient() {
         // utility class
     }
@@ -172,7 +187,7 @@ final class OkapiClient {
         params.add(PARAMETER_LOGCOUNT_KEY, PARAMETER_LOGCOUNT_VALUE);
         params.add(PARAMETER_LOG_FIELDS_KEY, PARAMETER_LOG_FIELDS_VALUE);
 
-        final JSONResult result = request(ocapiConn, OkapiService.SERVICE_CACHE, params);
+        final JSONResult result = getRequest(ocapiConn, OkapiService.SERVICE_CACHE, params);
 
         return result.isSuccess ? parseCache(result.data) : null;
     }
@@ -248,7 +263,7 @@ final class OkapiClient {
         }
         addRetrieveParams(params, connector);
 
-        final ObjectNode data = request(connector, OkapiService.SERVICE_SEARCH_AND_RETRIEVE, params).data;
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_SEARCH_AND_RETRIEVE, params).data;
 
         if (data == null) {
             return Collections.emptyList();
@@ -282,7 +297,7 @@ final class OkapiClient {
         final Parameters params = new Parameters("cache_code", cache.getGeocode());
         params.add("watched", watched ? "true" : "false");
 
-        final ObjectNode data = request(connector, OkapiService.SERVICE_MARK_CACHE, params).data;
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_MARK_CACHE, params).data;
 
         if (data == null) {
             return false;
@@ -297,13 +312,13 @@ final class OkapiClient {
         final Parameters params = new Parameters("cache_code", cache.getGeocode());
         params.add("ignored", "true");
 
-        final ObjectNode data = request(connector, OkapiService.SERVICE_MARK_CACHE, params).data;
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_MARK_CACHE, params).data;
 
         return data != null;
     }
 
     @NonNull
-    public static LogResult postLog(@NonNull final Geocache cache, @NonNull final LogType logType, @NonNull final Calendar date, @NonNull final String log, @Nullable final String logPassword, @NonNull final OCApiConnector connector) {
+    public static LogResult postLog(@NonNull final Geocache cache, @NonNull final LogType logType, @NonNull final Calendar date, @NonNull final String log, @Nullable final String logPassword, @NonNull final OCApiConnector connector, @NonNull final ReportProblemType reportProblem) {
         final Parameters params = new Parameters("cache_code", cache.getGeocode());
         params.add("logtype", logType.ocType);
         params.add("comment", log);
@@ -315,8 +330,11 @@ final class OkapiClient {
         if (logPassword != null) {
             params.add("password", logPassword);
         }
+        if (reportProblem == ReportProblemType.NEEDS_MAINTENANCE) { // OKAPI only knows this one problem type
+            params.add("needs_maintenance2", "true");
+        }
 
-        final ObjectNode data = request(connector, OkapiService.SERVICE_SUBMIT_LOG, params).data;
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_SUBMIT_LOG, params).data;
 
         if (data == null) {
             return new LogResult(StatusCode.LOG_POST_ERROR, "");
@@ -334,11 +352,49 @@ final class OkapiClient {
         return new LogResult(StatusCode.LOG_POST_ERROR, "");
     }
 
+    @NonNull
+    public static ImageResult postLogImage(final String logId, final Image image, @NonNull final OCApiConnector connector) {
+        try {
+            final Parameters params = new Parameters("log_uuid", logId);
+            final File file = image.getFile();
+            if (file == null) {
+                return new ImageResult(StatusCode.LOGIMAGE_POST_ERROR, "");
+            }
+            params.add("image", Base64.encodeToString(IOUtils.readFully(new FileInputStream(file), (int) file.length()), DEFAULT));
+            params.add("caption", createImageCaption(image));
+
+            final ObjectNode data = postRequest(connector, OkapiService.SERVICE_ADD_LOG_IMAGE, params).data;
+
+            if (data == null) {
+                return new ImageResult(StatusCode.LOGIMAGE_POST_ERROR, "");
+            }
+
+            if (data.get("success").asBoolean()) {
+                return new ImageResult(StatusCode.NO_ERROR, data.get("image_url").asText());
+            }
+
+            return new ImageResult(StatusCode.LOGIMAGE_POST_ERROR, "");
+        } catch (final Exception e) {
+            Log.e("OkapiClient.postLogImage", e);
+        }
+        return new ImageResult(StatusCode.LOGIMAGE_POST_ERROR, "");
+    }
+
+    @NonNull
+    private static String createImageCaption(final Image image) {
+        final StringBuilder caption = new StringBuilder(StringUtils.trimToEmpty(image.getTitle()));
+        if (StringUtils.isNotEmpty(caption) && StringUtils.isNotBlank(image.getDescription())) {
+            caption.append(": ");
+        }
+        caption.append(StringUtils.trimToEmpty(image.getDescription()));
+        return caption.toString();
+    }
+
     public static boolean uploadPersonalNotes(@NonNull final OCApiConnector connector, @NonNull final Geocache cache) {
         Log.d("Uploading personal note for opencaching");
 
         final Parameters notesParam = new Parameters("cache_code", cache.getGeocode(), "fields", CACHE_MY_NOTES);
-        final ObjectNode notesData = request(connector, OkapiService.SERVICE_CACHE, notesParam).data;
+        final ObjectNode notesData = getRequest(connector, OkapiService.SERVICE_CACHE, notesParam).data;
 
         String prevNote = StringUtils.EMPTY;
 
@@ -349,7 +405,7 @@ final class OkapiClient {
         final String currentNote = StringUtils.defaultString(cache.getPersonalNote());
 
         final Parameters params = new Parameters("cache_code", cache.getGeocode(), "new_value", currentNote, "old_value", prevNote);
-        final ObjectNode data = request(connector, OkapiService.SERVICE_UPLOAD_PERSONAL_NOTE, params).data;
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_UPLOAD_PERSONAL_NOTE, params).data;
 
         if (data == null) {
             return false;
@@ -410,6 +466,13 @@ final class OkapiClient {
             cache.setOwnerDisplayName(owner);
             // OpenCaching has no distinction between user id and user display name. Set the ID anyway to simplify c:geo workflows.
             cache.setOwnerUserId(owner);
+            final String profile = response.get(CACHE_OWNER).get(CACHE_USER_PROFILE).asText();
+            if (StringUtils.isNotEmpty(profile)) {
+                final String id = StringUtils.substringAfter(profile, "userid=");
+                if (StringUtils.isNotEmpty(id)) {
+                    cache.setOwnerUserId(id);
+                }
+            }
 
             final Map<LogType, Integer> logCounts = cache.getLogCounts();
             logCounts.put(LogType.FOUND_IT, response.get(CACHE_FOUNDS).asInt());
@@ -428,13 +491,7 @@ final class OkapiClient {
             final StringBuilder description = new StringBuilder(500);
             if (response.hasNonNull("gc_code")) {
                 final String gccode = response.get("gc_code").asText();
-                description.append(CgeoApplication.getInstance().getResources()
-                        .getString(R.string.cache_listed_on, GCConnector.getInstance().getName()))
-                        .append(": <a href=\"https://coord.info/")
-                        .append(gccode)
-                        .append("\">")
-                        .append(gccode)
-                        .append("</a><br /><br />");
+                description.append(Geocache.getAlternativeListingText(gccode));
             }
             description.append(response.get(CACHE_DESCRIPTION).asText());
             cache.setDescription(description.toString());
@@ -685,7 +742,7 @@ final class OkapiClient {
         final String latitude = StringUtils.substringBefore(location, SEPARATOR_STRING);
         final String longitude = StringUtils.substringAfter(location, SEPARATOR_STRING);
         if (StringUtils.isNotBlank(latitude) && StringUtils.isNotBlank(longitude)) {
-            return new Geopoint(latitude, longitude);
+            return new Geopoint(Double.parseDouble(latitude), Double.parseDouble(longitude));
         }
 
         return null;
@@ -718,7 +775,7 @@ final class OkapiClient {
     private static void setLocation(@NonNull final Geocache cache, final String location) {
         final String latitude = StringUtils.substringBefore(location, SEPARATOR_STRING);
         final String longitude = StringUtils.substringAfter(location, SEPARATOR_STRING);
-        cache.setCoords(new Geopoint(latitude, longitude));
+        cache.setCoords(new Geopoint(Double.parseDouble(latitude), Double.parseDouble(longitude)));
     }
 
     @NonNull
@@ -822,7 +879,7 @@ final class OkapiClient {
     }
 
     @NonNull
-    private static JSONResult request(@NonNull final OCApiConnector connector, @NonNull final OkapiService service, @NonNull final Parameters params) {
+    private static JSONResult request(@NonNull final OCApiConnector connector, @NonNull final OkapiService service, @NonNull final String method, @NonNull final Parameters params) {
         final String host = connector.getHost();
         if (StringUtils.isBlank(host)) {
             return new JSONResult("unknown OKAPI connector host");
@@ -836,7 +893,7 @@ final class OkapiClient {
                 if (!tokens.isValid()) {
                     return new JSONResult("invalid oauth tokens");
                 }
-                OAuth.signOAuth(host, service.methodName, "GET", connector.getHttps(), params, tokens, connector.getCK(), connector.getCS());
+                OAuth.signOAuth(host, service.methodName, method, connector.getHttps(), params, tokens, connector.getCK(), connector.getCS());
                 break;
             }
             case Level1 : {
@@ -850,10 +907,23 @@ final class OkapiClient {
 
         final String uri = connector.getHostUrl() + service.methodName;
         try {
-            return new JSONResult(Network.getRequest(uri, params).blockingGet());
+            if ("GET".equals(method)) {
+                return new JSONResult(Network.getRequest(uri, params).blockingGet());
+            }
+            return new JSONResult(Network.postRequest(uri, params).blockingGet());
         } catch (final Exception e) {
             return new JSONResult("connection error");
         }
+    }
+
+    @NonNull
+    private static JSONResult getRequest(@NonNull final OCApiConnector connector, @NonNull final OkapiService service, @NonNull final Parameters params) {
+        return request(connector, service, "GET", params);
+    }
+
+    @NonNull
+    private static JSONResult postRequest(@NonNull final OCApiConnector connector, @NonNull final OkapiService service, @NonNull final Parameters params) {
+        return request(connector, service, "POST", params);
     }
 
     /**
@@ -916,7 +986,7 @@ final class OkapiClient {
     public static String getUserUUID(@NonNull final OCApiConnector connector, @NonNull final String userName) {
         final Parameters params = new Parameters("fields", USER_UUID, USER_USERNAME, userName);
 
-        final JSONResult result = request(connector, OkapiService.SERVICE_USER_BY_USERNAME, params);
+        final JSONResult result = getRequest(connector, OkapiService.SERVICE_USER_BY_USERNAME, params);
         if (!result.isSuccess) {
             final OkapiError error = new OkapiError(result.data);
             Log.e("OkapiClient.getUserUUID: error getting user info: '" + error.getMessage() + "'");
@@ -930,7 +1000,7 @@ final class OkapiClient {
     public static UserInfo getUserInfo(@NonNull final OCApiLiveConnector connector) {
         final Parameters params = new Parameters("fields", USER_INFO_FIELDS);
 
-        final JSONResult result = request(connector, OkapiService.SERVICE_USER, params);
+        final JSONResult result = getRequest(connector, OkapiService.SERVICE_USER, params);
 
         if (!result.isSuccess) {
             final OkapiError error = new OkapiError(result.data);
@@ -964,7 +1034,7 @@ final class OkapiClient {
     }
 
     /**
-     * Encapsulates response state and content of an HTTP-request that expects a JSON result. {@code isSuccess} is
+     * Encapsulates response state and content of an HTTP-getRequest that expects a JSON result. {@code isSuccess} is
      * only true, if the response state was success and {@code data} is not null.
      */
     private static class JSONResult {
@@ -998,7 +1068,7 @@ final class OkapiClient {
     @Nullable
     public static String getGeocodeByUrl(@NonNull final OCApiConnector connector, @NonNull final String url) {
         final Parameters params = new Parameters("urls", url);
-        final ObjectNode data = request(connector, OkapiService.SERVICE_RESOLVE_URL, params).data;
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_RESOLVE_URL, params).data;
 
         if (data == null) {
             return null;
@@ -1011,28 +1081,80 @@ final class OkapiClient {
      * get the registration url for mobile devices
      */
     public static String getMobileRegistrationUrl(@NonNull final OCApiConnector connector) {
-        return getInstallationInformation(connector, "mobile_registration_url");
+        return getInstallationInformation(connector).mobileRegistrationUrl;
     }
 
     /**
      * get the normal registration url
      */
     public static String getRegistrationUrl(@NonNull final OCApiConnector connector) {
-        return getInstallationInformation(connector, "registration_url");
+        return getInstallationInformation(connector).registrationUrl;
     }
 
-    private static String getInstallationInformation(final OCApiConnector connector, final String field) {
-        final ObjectNode data = request(connector, OkapiService.SERVICE_API_INSTALLATION, new Parameters()).data;
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class InstallationInformation {
+        @JsonProperty("site_url")
+        String siteUrl;
+        @JsonProperty("okapi_base_url")
+        String okapiBaseUrl;
+        @JsonProperty("okapi_base_urls")
+        String[] okapiBaseUrls;
+        @JsonProperty("site_name")
+        String siteName;
+        @JsonProperty("okapi_version_number")
+        String okapiVersionNumber;
+        @JsonProperty("okapi_revision")
+        String okapiRevision;
+        @JsonProperty("git_revision")
+        String gitRevision;
+        @JsonProperty("registration_url")
+        String registrationUrl;
+        @JsonProperty("mobile_registration_url")
+        String mobileRegistrationUrl;
+        @JsonProperty("image_max_upload_size")
+        Long imageMaxUploadSize;
+        @JsonProperty("image_rcmd_max_pixels")
+        Long imageRcmdMaxPixels;
+
+        @Override
+        public String toString() {
+            return "InstallationInformation{" +
+                    "siteUrl='" + siteUrl + '\'' +
+                    ", okapiBaseUrl='" + okapiBaseUrl + '\'' +
+                    ", okapiBaseUrls=" + Arrays.toString(okapiBaseUrls) +
+                    ", siteName='" + siteName + '\'' +
+                    ", okapiVersionNumber='" + okapiVersionNumber + '\'' +
+                    ", okapiRevision='" + okapiRevision + '\'' +
+                    ", gitRevision='" + gitRevision + '\'' +
+                    ", registrationUrl='" + registrationUrl + '\'' +
+                    ", mobileRegistrationUrl='" + mobileRegistrationUrl + '\'' +
+                    ", imageMaxUploadSize=" + imageMaxUploadSize +
+                    ", imageRcmdMaxPixels=" + imageRcmdMaxPixels +
+                    '}';
+        }
+    }
+
+    @NonNull
+    static InstallationInformation getInstallationInformation(final OCApiConnector connector) {
+        if (connector.getInstallationInformation() != null) {
+            return connector.getInstallationInformation();
+        }
+        final ObjectNode data = getRequest(connector, OkapiService.SERVICE_API_INSTALLATION, new Parameters()).data;
 
         if (data == null) {
-            return null;
+            return new InstallationInformation();
         }
 
-        if (data.has(field) && !data.get(field).isNull()) {
-            return data.get(field).asText();
+        try {
+            final InstallationInformation info = MAPPER.readValue(data.traverse(), InstallationInformation.class);
+            connector.setInstallationInformation(info);
+            Log.i("OkapiClient.getInstallationInformation: " + info);
+            return info;
+        } catch (final IOException e) {
+            Log.e("OkapiClient.getInstallationInformation: Couldn't read InstallationInformation", e);
         }
 
-        return null;
+        return new InstallationInformation();
     }
 
     /**

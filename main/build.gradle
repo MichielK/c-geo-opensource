@@ -5,31 +5,29 @@ import org.apache.tools.ant.filters.ReplaceTokens
  */
 
 
-/* 
+/*
  * Android plugin, http://developer.android.com/tools/building/plugin-for-gradle.html
  */
 apply plugin: 'com.android.application'
 /*
  * https://github.com/KeepSafe/dexcount-gradle-plugin. dex counting can take several seconds, therefore do this only on the CI server
  */
+
 if (isContinuousIntegrationServer()) {
     apply plugin: 'com.getkeepsafe.dexcount'
 }
 
 android {
     compileSdkVersion "Google Inc.:Google APIs:23"
-    buildToolsVersion project.buildToolsVersion
 
     compileOptions {
-    	// use the diamond operator and some other goodies in Android
+        // use the diamond operator and some other goodies in Android
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
     }
 
     defaultConfig {
-        // TODO fill this section and remove the values from AndroidManifest only after the full switch to gradle
-        // As these values override the manifest, we might otherwise use different values in gradle and non-gradle builds.
-        minSdkVersion project.minSdkVersion
+        minSdkVersion 14
         targetSdkVersion 22
         versionName versionNameFromDate()
         versionCode versionCodeFromDate(0)
@@ -50,7 +48,7 @@ android {
         applicationId = "cgeo.geocaching"
 
         // include only those language resources from libraries which we actively maintain ourself in the translation project
-        resConfigs "en","ca","cs","da","de","es","fi","fr","hu","it","ja","ko","lt","lv","nb","nl","pl","pt","ro","ru","sk","sl","sv"
+        resConfigs "en","ca","ceb","cs","da","de","el","es","fi","fr","hu","it","ja","ko","lt","lv","nb","nl","pl","pt","ro","ru","sk","sl","sv","tr"
     }
 
     // signing is handled via private.properties
@@ -64,7 +62,7 @@ android {
             versionNameSuffix "-" + gitCommitId().substring(0, 7) + " developer build"
 
             // additional proguard rules just for the test code
-			testProguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt', '../tests/proguard-project.txt'
+            testProguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt', '../tests/proguard-project.txt'
 
             // code coverage
             testCoverageEnabled isContinuousIntegrationServer()
@@ -73,20 +71,26 @@ android {
             def nightlyName = System.getenv('NB') // NB, NB1, ...
             versionNameSuffix "-$nightlyName-" + gitCommitId().substring(0, 7)
             signingConfig signingConfigs.release
+            // use release version of source code library dependencies
+            matchingFallbacks = ['release']
         }
         rc {
             def rcName = System.getenv('RC') // RC, RC1, RC2 ...
             versionNameSuffix "-$rcName"
             signingConfig signingConfigs.release
+            // use release version of source code library dependencies
+            matchingFallbacks = ['release']
         }
         legacy {
             signingConfig signingConfigs.release
+            // use release version of source code library dependencies
+            matchingFallbacks = ['release']
         }
         release {
             signingConfig signingConfigs.release
         }
     }
-    
+
     buildTypes.all { buildType ->
         // enable proguard and remove unused code
         buildType.minifyEnabled true
@@ -94,14 +98,14 @@ android {
         // remove unused resources in addition to unused code
         shrinkResources true
 
-		// proguard rules
+        // proguard rules
         buildType.proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
     }
 
     testBuildType "debug" //the default BuildType
 
     sourceSets {
-    	// application sources in source set "main"
+        // application sources in source set "main"
         main {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src', 'thirdparty', '../common/src'] // no need for annotation generated sources
@@ -142,10 +146,10 @@ android {
     }
 
     lintOptions {
-    	// generally we accept lint errors when building 
+        // generally we accept lint errors when building
         abortOnError false
-        
-    	// abort release builds in case of FATAL errors
+
+        // abort release builds in case of FATAL errors
         checkReleaseBuilds true
 
         // recommended by ButterKnife, http://jakewharton.github.io/butterknife/
@@ -188,37 +192,48 @@ android {
         exclude 'META-INF/rxjava.properties'
     }
 
+    flavorDimensions "javaCompilerTime" // all flavours must be assigned a dimension
     productFlavors {
         // make sure to not have any flavour lexicographically smaller than "basic". Android Studio takes the first alphabetical flavor in new installations.
         basic {
+            dimension "javaCompilerTime"
             buildConfigField "String", "SPECIAL_BUILD", '""'
         }
 
         nojit {
+            dimension "javaCompilerTime"
             buildConfigField "String", "SPECIAL_BUILD", '"Disabled JIT"'
         }
     }
 
     // remove the "-basic" flavour name from the generated APK, have the flavor remain only for special builds
     applicationVariants.all { variant ->
-        variant.outputs.each { output ->
-            output.outputFile = new File(
-                    output.outputFile.parent,
-                    output.outputFile.name.replace('-basic-', '-'))
+        variant.outputs.all { output ->
+            outputFileName = outputFileName.replace('-basic-', '-')
         }
     }
 
     // special version code for nightly and rc builds
     applicationVariants.all { variant ->
         if (variant.buildType.name == 'nightly') {
-            variant.mergedFlavor.versionCode = versionCodeFromDate(10000000)
+            variant.outputs.all {
+                setVersionCodeOverride(versionCodeFromDate(10000000))
+            }
         }
         if (variant.buildType.name == 'rc') {
-            variant.mergedFlavor.versionCode = versionCodeFromDate(-1)
+            variant.outputs.all {
+                setVersionCodeOverride(versionCodeFromDate(-1))
+            }
         }
         if (variant.buildType.name == 'legacy') {
-            variant.mergedFlavor.versionName = System.getenv('LEGACY_VERSION_NAME')
-            variant.mergedFlavor.versionCode = System.getenv('LEGACY_VERSION_CODE') as Integer
+            def legacyName = System.getenv('LEGACY_VERSION_NAME')
+            def legacyVersion = System.getenv('LEGACY_VERSION_CODE') as Integer
+            if (legacyName != null && legacyVersion != null) {
+                variant.outputs.all {
+                    setVersionNameOverride(legacyName)
+                    setVersionCodeOverride(legacyVersion)
+                }
+            }
         }
         // debug and release builds have offset zero, no special handling here
     }
@@ -226,124 +241,127 @@ android {
 
 dependencies {
     // AndroidAnnotations, https://github.com/excilys/androidannotations/wiki/building-project-gradle
-    def androidAnnotationsVersion = '4.3.0'
+    def androidAnnotationsVersion = '4.5.2'
     annotationProcessor "org.androidannotations:androidannotations:$androidAnnotationsVersion"
-    compile "org.androidannotations:androidannotations-api:$androidAnnotationsVersion"
+    implementation "org.androidannotations:androidannotations-api:$androidAnnotationsVersion"
 
     // Apache Commons
-    compile 'org.apache.commons:commons-collections4:4.1'
-    compile 'org.apache.commons:commons-compress:1.14'
-    compile 'commons-io:commons-io:2.5'
-    compile 'org.apache.commons:commons-lang3:3.5'
+    implementation 'org.apache.commons:commons-collections4:4.1'
+    implementation 'org.apache.commons:commons-compress:1.14'
+    implementation 'commons-io:commons-io:2.5'
+    implementation 'org.apache.commons:commons-lang3:3.5'
 
     // AssertJ for testing, needed both for local unit tests and Android instrumentation tests
-    def assertJVersion = '2.8.0'
-    testCompile "org.assertj:assertj-core:$assertJVersion"
-    androidTestCompile "org.assertj:assertj-core:$assertJVersion"
+    def assertJVersion = '2.9.0'
+    testImplementation "org.assertj:assertj-core:$assertJVersion"
+    androidTestImplementation "org.assertj:assertj-core:$assertJVersion"
 
     // ButterKnife view injection, https://github.com/JakeWharton/butterknife
     def butterKnifeVersion = '8.4.0'
-    compile "com.jakewharton:butterknife:$butterKnifeVersion"
+    implementation "com.jakewharton:butterknife:$butterKnifeVersion"
     annotationProcessor "com.jakewharton:butterknife-compiler:$butterKnifeVersion"
 
     // Findbugs
-    compile ('com.google.code.findbugs:annotations:3.0.1u2') {
+    implementation ('com.google.code.findbugs:annotations:3.0.1u2') {
         exclude group: 'com.google.code.findbugs', module: 'jsr305'
         exclude group: 'net.jcip', module: 'jcip-annotations'
     }
 
     // GeographicLib
-    compile "net.sf.geographiclib:GeographicLib-Java:1.48"
+    implementation "net.sf.geographiclib:GeographicLib-Java:1.49"
 
     // Jackson XML processing
-    def jacksonVersion = '2.8.8'
-    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    def jacksonVersion = '2.9.5'
+    implementation "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
 
     // Jsoup HTML parsing
-    compile 'org.jsoup:jsoup:1.10.2'
+    implementation 'org.jsoup:jsoup:1.11.3'
 
     // Junit only needed for local unit tests
-    testCompile 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
 
     // Leak Canary, memory leak detection
-    def leakCanaryVersion = '1.5.1'
-    debugCompile "com.squareup.leakcanary:leakcanary-android:$leakCanaryVersion"
-    releaseCompile "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
-    nightlyCompile "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
-    rcCompile "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
-    legacyCompile "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
-    testCompile "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
+    def leakCanaryVersion = '1.5.4'
+    debugImplementation "com.squareup.leakcanary:leakcanary-android:$leakCanaryVersion"
+    releaseImplementation "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
+    nightlyImplementation "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
+    rcImplementation "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
+    legacyImplementation "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
+    testImplementation "com.squareup.leakcanary:leakcanary-android-no-op:$leakCanaryVersion"
 
     // Locus Maps integration
-    compile "com.asamm:locus-api:0.2.9"
-    compile "com.asamm:locus-api-android:0.2.9"
+    implementation "com.asamm:locus-api:0.2.15"
+    implementation "com.asamm:locus-api-android:0.2.15"
 
     // Mapsforge old version
-    compile files('libs/mapsforge-map-0.3.0-jar-with-dependencies.jar')
-    compile 'com.caverock:androidsvg:1.2.2-beta-1'
+    implementation files('libs/mapsforge-map-0.3.0-jar-with-dependencies.jar')
+    implementation 'com.caverock:androidsvg:1.2.2-beta-1'
 
     // Mapsforge new version
-    def mapsforgeVersion = '0.8.0'
-    compile "org.mapsforge:mapsforge-core:$mapsforgeVersion"
-    compile "org.mapsforge:mapsforge-map:$mapsforgeVersion"
-    compile "org.mapsforge:mapsforge-map-android:$mapsforgeVersion"
-    compile "org.mapsforge:mapsforge-map-reader:$mapsforgeVersion"
-    compile "org.mapsforge:mapsforge-themes:$mapsforgeVersion"
+    def mapsforgeVersion = '0.9.1'
+    implementation "org.mapsforge:mapsforge-core:$mapsforgeVersion"
+    implementation "org.mapsforge:mapsforge-map:$mapsforgeVersion"
+    implementation "org.mapsforge:mapsforge-map-android:$mapsforgeVersion"
+    implementation "org.mapsforge:mapsforge-map-reader:$mapsforgeVersion"
+    implementation "org.mapsforge:mapsforge-themes:$mapsforgeVersion"
     configurations {
         all*.exclude group: 'net.sf.kxml', module: 'kxml2' // duplicate XmlPullParser class
     }
 
     // Maps.ME integration
-    compile project(":mapswithme-api")
+    implementation project(":mapswithme-api")
 
     // Metadata Extractor, EXIF location extraction from images
-    compile 'com.drewnoakes:metadata-extractor:2.10.1'
+    implementation 'com.drewnoakes:metadata-extractor:2.11.0'
 
     // Okhttp network access
-    compile 'com.squareup.okhttp3:okhttp:3.8.0'
+    implementation 'com.squareup.okhttp3:okhttp:3.9.1'
 
     // Play Services
     def playServicesVersion = '9.4.0'
-    compile "com.google.android.gms:play-services-location:$playServicesVersion"
-    compile "com.google.android.gms:play-services-appinvite:$playServicesVersion"
+    implementation "com.google.android.gms:play-services-location:$playServicesVersion"
+    implementation "com.google.android.gms:play-services-appinvite:$playServicesVersion"
     // somehow there is a transitive play service dependency which we don't want
     configurations.all*.exclude module: "play-services-measurement"
 
     // ProcessPhoenix, reliable process restart
-    compile 'com.jakewharton:process-phoenix:2.0.0'
+    implementation 'com.jakewharton:process-phoenix:2.0.0'
 
     // RxJava
-    compile "io.reactivex.rxjava2:rxjava:2.1.0"
-    compile "io.reactivex.rxjava2:rxandroid:2.0.1"
+    implementation "io.reactivex.rxjava2:rxjava:2.2.0"
+    implementation "io.reactivex.rxjava2:rxandroid:2.0.2"
 
     // Support Library. Appcompat
-    compile 'com.android.support:appcompat-v7:20.0.0'
-    
+    implementation 'com.android.support:appcompat-v7:20.0.0'
+
     // Support Library RecyclerView
-    compile 'com.android.support:recyclerview-v7:22.0.0'
+    implementation 'com.android.support:recyclerview-v7:22.0.0'
     // we don't want to implement decorators on our own
-	compile 'com.yqritc:recyclerview-flexibledivider:1.4.0'
+    implementation 'com.yqritc:recyclerview-flexibledivider:1.4.0'
 
     // Support Annotations. enforce same version for the main app and the test app
     def supportAnnotationsVersion = '24.2.1'
-    compile "com.android.support:support-annotations:$supportAnnotationsVersion"
-    androidTestCompile "com.android.support:support-annotations:$supportAnnotationsVersion"
+    implementation "com.android.support:support-annotations:$supportAnnotationsVersion"
+    androidTestImplementation "com.android.support:support-annotations:$supportAnnotationsVersion"
 
     // Testing Support Library. Android Studio recommended test runner, see https://developer.android.com/tools/testing-support-library/index.html#setup
-    androidTestCompile 'com.android.support.test:runner:0.5'
+    androidTestImplementation 'com.android.support.test:runner:0.5'
 
     // Undo toast
-    compile 'com.github.jenzz.undobar:library:1.3:api8Release@aar'
-    compile 'com.nineoldandroids:library:2.4.0'
+    implementation 'com.github.jenzz.undobar:library:1.3:api8Release@aar'
+    implementation 'com.nineoldandroids:library:2.4.0'
 
     // ViewPagerIndicator, view pager titles for cache details and similar view pager based activities
     // this is a fork of the original viewpager library which still works with android level 9. we can use 'com.github.JakeWharton:ViewPagerIndicator:2.4.1@aar' when switching to min sdk 11.
-    compile 'com.viewpagerindicator:viewpagerindicator:2.4.3'
+    implementation 'com.viewpagerindicator:viewpagerindicator:2.4.3'
 
     // Zxing barcode reader integration
-    compile 'com.google.zxing:android-integration:3.3.0'
+    implementation 'com.google.zxing:android-integration:3.3.0'
+
+    // GridLayout used by the coordinate calculator
+    implementation 'com.android.support:gridlayout-v7:23.0.1'
 
     // Espresso TODO: disabled because of causing proguard errors en masse (due to including hamcrest and what else as own dependencies)
     // androidTestCompile 'com.jakewharton.espresso:espresso:1.1-r3'
@@ -381,7 +399,7 @@ task verifyCgeoKeys {
                     into ("res/values")
                     def properties = new Properties()
                     propertiesFile.withInputStream {
-                        properties.load(it);
+                        properties.load(it)
                     }
                     filter(ReplaceTokens, tokens: properties)
                     filter { it.replaceAll("@.+?@", "") }
@@ -411,7 +429,7 @@ static def versionCodeFromDate(offset) {
 
 /*
  * version name based on current date
- */ 
+ */
 static def versionNameFromDate() {
     def date = new Date()
     def formattedDate = date.format('yyyy.MM.dd')
@@ -518,8 +536,24 @@ task copyDefaultPreferencesToAndroid(dependsOn: 'installBasicDebug') {
             try {
                 project.exec {
                     executable = project.android.getAdbExe().toString()
-                    args = ['push', 'cgeo.geocaching_preferences.xml', '/data/data/cgeo.geocaching/shared_prefs/cgeo.geocaching_preferences.xml']
+                    args = ['push', 'cgeo.geocaching_preferences.xml', '/data/local/tmp/cgeo.geocaching_preferences.xml']
                 }
+                project.exec {
+                    executable = project.android.getAdbExe().toString()
+                    args = ['shell', 'run-as', 'cgeo.geocaching', 'mkdir', '/data/data/cgeo.geocaching/shared_prefs/']
+                }
+                project.exec {
+                    executable = project.android.getAdbExe().toString()
+                    args = ['shell', 'run-as', 'cgeo.geocaching', 'cp', '/data/local/tmp/cgeo.geocaching_preferences.xml', '/data/data/cgeo.geocaching/shared_prefs/cgeo.geocaching_preferences.xml']
+                }
+                project.exec {
+                    executable = project.android.getAdbExe().toString()
+                    args = ['shell', 'run-as', 'cgeo.geocaching', 'ls', '-l', '/data/data/cgeo.geocaching/shared_prefs/']
+                }
+                project.exec {
+                    executable = project.android.getAdbExe().toString()
+                    args = ['shell', 'getprop', 'ro.build.version.release']
+                 }
             }
             // we might not actually have permission to copy the preferences on actual devices, let's continue running the app then
             catch (RuntimeException e) {
@@ -576,12 +610,12 @@ task downloadLibs {
     group "cgeo"
     description "Downloads the dependency JARs for use with Eclipse"
     doFirst {
-        configurations.compile.resolvedConfiguration.resolvedArtifacts.each { ResolvedArtifact artifact ->
-        	if (artifact.extension == 'jar' || artifact.extension == 'aar') {
-	            project.copy {
-	                from artifact.file
-	                into "libs"
-	            }
+        configurations.implementation.resolvedConfiguration.resolvedArtifacts.each { ResolvedArtifact artifact ->
+            if (artifact.extension == 'jar' || artifact.extension == 'aar') {
+                project.copy {
+                    from artifact.file
+                    into "libs"
+                }
             }
             if (artifact.extension == 'aar') {
                 unzipAAR(artifact.file.name)
@@ -590,7 +624,7 @@ task downloadLibs {
 
         // download javadoc
         new File(".\\main\\libs\\src").mkdirs()
-        configurations.compile.dependencies.each { Dependency dependency ->
+        configurations.implementation.dependencies.each { Dependency dependency ->
             try {
                 def vendor = dependency.group.replace(".","/")
                 def version = dependency.version

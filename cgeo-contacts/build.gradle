@@ -6,7 +6,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion project.buildToolsVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
@@ -14,9 +13,7 @@ android {
     }
 
     defaultConfig {
-        // TODO fill this section and remove the values from AndroidManifest only after the full switch to gradle
-        // As these values override the manifest, we might otherwise use different values in gradle and non-gradle builds.
-        minSdkVersion project.minSdkVersion
+        minSdkVersion 14
         targetSdkVersion 22
     }
 
@@ -30,10 +27,10 @@ android {
     }
 
     lintOptions {
-    	// generally we accept lint errors when building 
+        // generally we accept lint errors when building
         abortOnError false
-        
-    	// abort release builds in case of FATAL errors
+
+        // abort release builds in case of FATAL errors
         checkReleaseBuilds true
     }
 }
@@ -41,9 +38,9 @@ android {
 
 dependencies {
     // Apache Commons
-    compile 'commons-io:commons-io:2.5'
-    compile 'org.apache.commons:commons-lang3:3.5'
+    implementation 'commons-io:commons-io:2.5'
+    implementation 'org.apache.commons:commons-lang3:3.5'
 
     // Android annotations
-    compile 'com.android.support:support-annotations:24.2.1'
+    implementation 'com.android.support:support-annotations:24.2.1'
 }

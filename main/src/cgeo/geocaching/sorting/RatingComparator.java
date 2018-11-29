@@ -8,11 +8,26 @@ import cgeo.geocaching.models.Geocache;
  */
 class RatingComparator extends AbstractCacheComparator {
 
+    /**
+     * Average rating of GC50*** determined on June 26th, 2017
+     */
+    private static final float AVERAGE_RATING = 3.4f;
+
+    private static final int AVERAGE_VOTES = 5;
+
     @Override
     protected int compareCaches(final Geocache cache1, final Geocache cache2) {
-        final float rating1 = cache1.getRating();
-        final float rating2 = cache2.getRating();
-        // Voting can be disabled for caches, then assume an average rating instead
-        return Float.compare(rating2 != 0.0 ? rating2 : 2.5f, rating1 != 0.0 ? rating1 : 2.5f);
+        return Float.compare(getWeightedArithmeticMean(cache2), getWeightedArithmeticMean(cache1));
     }
+
+    /**
+     * Add some artificial average ratings to weight caches with few ratings towards the average rating.
+     */
+    private static float getWeightedArithmeticMean(final Geocache cache) {
+        final float rating = cache.getRating();
+        final int votes = cache.getVotes();
+
+        return (votes * rating + AVERAGE_VOTES * AVERAGE_RATING) / (votes + AVERAGE_VOTES);
+    }
+
 }

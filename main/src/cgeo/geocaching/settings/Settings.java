@@ -1,25 +1,5 @@
 package cgeo.geocaching.settings;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
-import android.os.Build;
-import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-
 import cgeo.geocaching.CgeoApplication;
 import cgeo.geocaching.R;
 import cgeo.geocaching.apps.navi.NavigationAppFactory.NavigationAppsEnum;
@@ -55,6 +35,27 @@ import cgeo.geocaching.utils.FileUtils;
 import cgeo.geocaching.utils.FileUtils.FileSelector;
 import cgeo.geocaching.utils.Log;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.os.Build;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+
 /**
  * General c:geo preferences/settings set by the user
  */
@@ -88,7 +89,7 @@ public class Settings {
         Min,
         Sec;
 
-        static final int DEFAULT_INT_VALUE = Min.ordinal();
+        public static final int DEFAULT_INT_VALUE = Min.ordinal();
 
         public static CoordInputFormatEnum fromInt(final int id) {
             final CoordInputFormatEnum[] values = CoordInputFormatEnum.values();
@@ -117,7 +118,7 @@ public class Settings {
     }
 
     private static void migrateSettings() {
-        final int latestPreferencesVersion = 3;
+        final int latestPreferencesVersion = 4;
         final int currentVersion = getInt(R.string.pref_settingsversion, 0);
 
         // No need to migrate if we are up to date.
@@ -276,6 +277,21 @@ public class Settings {
 
             e.putString(getKey(R.string.pref_dataDir), LocalStorage.getExternalPrivateCgeoDirectory().getAbsolutePath());
             e.putInt(getKey(R.string.pref_settingsversion), 3); // mark migrated
+            e.apply();
+        }
+
+        if (currentVersion < 4) {
+            final Editor e = sharedPrefs.edit();
+
+            if (Integer.parseInt(sharedPrefs.getString(getKey(R.string.pref_defaultNavigationTool), String.valueOf(NavigationAppsEnum.COMPASS.id))) == 25) {
+                e.putString(getKey(R.string.pref_defaultNavigationTool), prefsV0.getString(getKey(R.string.pref_defaultNavigationTool), String.valueOf(NavigationAppsEnum.INTERNAL_MAP.id)));
+            }
+
+            if (Integer.parseInt(sharedPrefs.getString(getKey(R.string.pref_defaultNavigationTool2), String.valueOf(NavigationAppsEnum.INTERNAL_MAP.id))) == 25) {
+                e.putString(getKey(R.string.pref_defaultNavigationTool2), prefsV0.getString(getKey(R.string.pref_defaultNavigationTool2), String.valueOf(NavigationAppsEnum.INTERNAL_MAP.id)));
+            }
+
+            e.putInt(getKey(R.string.pref_settingsversion), 4); // mark migrated
             e.apply();
         }
     }
@@ -833,7 +849,6 @@ public class Settings {
 
     private static final int MFMAP_BASEID = 40;
     private static final int MAPNIK = 1;
-    private static final int CYCLEMAP = 3;
     private static final int OFFLINE = 4;
     private static final int HISTORY_SIZE = 10;
 
@@ -850,8 +865,6 @@ public class Settings {
                 return GoogleMapProvider.GOOGLE_SATELLITE_ID.hashCode();
             case MFMAP_BASEID + MAPNIK:
                 return MapsforgeMapProvider.MAPSFORGE_MAPNIK_ID.hashCode();
-            case MFMAP_BASEID + CYCLEMAP:
-                return MapsforgeMapProvider.MAPSFORGE_CYCLEMAP_ID.hashCode();
             case MFMAP_BASEID + OFFLINE: {
                 final String mapFile = getMapFile();
                 if (StringUtils.isNotEmpty(mapFile)) {
@@ -1302,12 +1315,12 @@ public class Settings {
         putStringList(R.string.pref_caches_history, history);
     }
 
-    public static boolean useNewMapAsDefault() {
-        return getBoolean(R.string.pref_new_map_as_default, false);
+    public static boolean useOldMapsforgeAPI() {
+        return getBoolean(R.string.pref_old_mapsforge_api, false);
     }
 
-    static void setUseNewMapAsDefault(final boolean useNewMapAsDefault) {
-        putBoolean(R.string.pref_new_map_as_default, useNewMapAsDefault);
+    static void setOldMapsforgeAPI(final boolean useOldMapsforgeAPI) {
+        putBoolean(R.string.pref_old_mapsforge_api, useOldMapsforgeAPI);
     }
 
     public static boolean useHardwareAcceleration() {

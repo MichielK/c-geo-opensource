@@ -91,10 +91,20 @@ abstract class GPXParser extends FileParser {
             "http://www.gsak.net/xmlv1/5",
             "http://www.gsak.net/xmlv1/6"
     };
+
     /**
      * c:geo extensions of the gpx format
      */
-    private static final String CGEO_NS = "http://www.cgeo.org/wptext/1/0";
+    private static final String[] CGEO_NS = {
+            "http://www.cgeo.org/wptext/1/0"
+    };
+
+    /**
+     * opencaching extensions of the gpx format
+     */
+    private static final String[] OPENCACHING_NS = {
+            "https://github.com/opencaching/gpx-extension-v1"
+    };
 
     private static final Pattern PATTERN_MILLISECONDS = Pattern.compile("\\.\\d{3,7}");
 
@@ -138,6 +148,12 @@ abstract class GPXParser extends FileParser {
      * Unfortunately we can only detect terracaching child waypoints by remembering the state of the parent
      */
     private boolean terraChildWaypoint = false;
+    private boolean logPasswordRequired = false;
+
+    /**
+     * prefix of the long description. used for adding alternative geocodes.
+     */
+    private String descriptionPrefix = "";
 
     private final class UserDataListener implements EndTextElementListener {
         private final int index;
@@ -241,6 +257,10 @@ abstract class GPXParser extends FileParser {
                         cache.getLists().add(listId);
                     }
                     cache.setDetailed(true);
+                    cache.setLogPasswordRequired(logPasswordRequired);
+                    if (StringUtils.isNotBlank(descriptionPrefix)) {
+                        cache.setDescription(descriptionPrefix + cache.getDescription());
+                    }
 
                     createNoteFromGSAKUserdata();
 
@@ -430,6 +450,7 @@ abstract class GPXParser extends FileParser {
         registerGsakExtensions(cacheParent);
         registerTerraCachingExtensions(cacheParent);
         registerCgeoExtensions(cacheParent);
+        registerOpenCachingExtensions(cacheParent);
 
         // 3 different versions of the GC schema
         for (final String nsGC : GROUNDSPEAK_NAMESPACE) {
@@ -1018,25 +1039,68 @@ abstract class GPXParser extends FileParser {
      *
      */
     private void registerCgeoExtensions(final Element cacheParent) {
-        final Element cgeoVisited = cacheParent.getChild(CGEO_NS, "visited");
+        for (final String cgeoNamespace : CGEO_NS) {
+            final Element cgeoVisited = cacheParent.getChild(cgeoNamespace, "visited");
 
-        cgeoVisited.setEndTextElementListener(new EndTextElementListener() {
+            cgeoVisited.setEndTextElementListener(new EndTextElementListener() {
 
-            @Override
-            public void end(final String visited) {
-                wptVisited = Boolean.parseBoolean(visited.trim());
-            }
-        });
+                @Override
+                public void end(final String visited) {
+                    wptVisited = Boolean.parseBoolean(visited.trim());
+                }
+            });
 
-        final Element cgeoUserDefined = cacheParent.getChild(CGEO_NS, "userdefined");
+            final Element cgeoUserDefined = cacheParent.getChild(cgeoNamespace, "userdefined");
 
-        cgeoUserDefined.setEndTextElementListener(new EndTextElementListener() {
+            cgeoUserDefined.setEndTextElementListener(new EndTextElementListener() {
 
-            @Override
-            public void end(final String userDefined) {
-                wptUserDefined = Boolean.parseBoolean(userDefined.trim());
-            }
-        });
+                @Override
+                public void end(final String userDefined) {
+                    wptUserDefined = Boolean.parseBoolean(userDefined.trim());
+                }
+            });
+        }
+    }
+
+    /**
+     * Add listeners for opencaching extensions
+     *
+     */
+    private void registerOpenCachingExtensions(final Element cacheParent) {
+        for (final String namespace : OPENCACHING_NS) {
+            // waypoints.oc:cache
+            final Element ocCache = cacheParent.getChild(namespace, "cache");
+            final Element requiresPassword = ocCache.getChild(namespace, "requires_password");
+
+            requiresPassword.setEndTextElementListener(new EndTextElementListener() {
+
+                @Override
+                public void end(final String requiresPassword) {
+                    logPasswordRequired = Boolean.parseBoolean(requiresPassword.trim());
+                }
+            });
+
+            final Element otherCode = ocCache.getChild(namespace, "other_code");
+            otherCode.setEndTextElementListener(new EndTextElementListener() {
+
+                @Override
+                public void end(final String otherCode) {
+                    descriptionPrefix = Geocache.getAlternativeListingText(otherCode.trim());
+                }
+            });
+
+            final Element ocSize = ocCache.getChild(namespace, "size");
+            ocSize.setEndTextElementListener(new EndTextElementListener() {
+
+                @Override
+                public void end(final String ocSize) {
+                    final CacheSize size = CacheSize.getById(ocSize);
+                    if (size != CacheSize.UNKNOWN) {
+                        cache.setSize(size);
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -1110,6 +1174,8 @@ abstract class GPXParser extends FileParser {
         }
         originalLon = null;
         originalLat = null;
+        logPasswordRequired = false;
+        descriptionPrefix = "";
     }
 
     /**

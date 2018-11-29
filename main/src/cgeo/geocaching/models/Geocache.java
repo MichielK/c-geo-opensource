@@ -30,6 +30,7 @@ import cgeo.geocaching.log.LogEntry;
 import cgeo.geocaching.log.LogTemplateProvider;
 import cgeo.geocaching.log.LogTemplateProvider.LogContext;
 import cgeo.geocaching.log.LogType;
+import cgeo.geocaching.log.ReportProblemType;
 import cgeo.geocaching.maps.mapsforge.v6.caches.GeoitemRef;
 import cgeo.geocaching.network.HtmlImage;
 import cgeo.geocaching.settings.Settings;
@@ -39,6 +40,7 @@ import cgeo.geocaching.storage.DataStore.StorageLocation;
 import cgeo.geocaching.storage.LocalStorage;
 import cgeo.geocaching.utils.CalendarUtils;
 import cgeo.geocaching.utils.DisposableHandler;
+import cgeo.geocaching.utils.EventTimeParser;
 import cgeo.geocaching.utils.ImageUtils;
 import cgeo.geocaching.utils.LazyInitializedList;
 import cgeo.geocaching.utils.Log;
@@ -69,6 +71,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -87,7 +90,6 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class Geocache implements IWaypoint {
 
-    private static final int OWN_WP_PREFIX_OFFSET = 17;
     private long updated = 0;
     private long detailedUpdate = 0;
     private long visitedDate = 0;
@@ -372,6 +374,7 @@ public class Geocache implements IWaypoint {
             reliableLatLon = other.reliableLatLon;
         }
 
+        this.eventTimeMinutes = null; // will be recalculated if/when necessary
         return isEqualTo(other);
     }
 
@@ -471,13 +474,13 @@ public class Geocache implements IWaypoint {
         fromActivity.startActivity(LogCacheActivity.getLogCacheIntent(fromActivity, cacheId, geocode));
     }
 
-    public void logOffline(final Activity fromActivity, final LogType logType) {
+    public void logOffline(final Activity fromActivity, final LogType logType, final ReportProblemType reportProblem) {
         final boolean mustIncludeSignature = StringUtils.isNotBlank(Settings.getSignature()) && Settings.isAutoInsertSignature();
         final String initial = mustIncludeSignature ? LogTemplateProvider.applyTemplates(Settings.getSignature(), new LogContext(this, null, true)) : "";
-        logOffline(fromActivity, initial, Calendar.getInstance(), logType);
+        logOffline(fromActivity, initial, Calendar.getInstance(), logType, reportProblem);
     }
 
-    public void logOffline(final Activity fromActivity, final String log, final Calendar date, final LogType logType) {
+    public void logOffline(final Activity fromActivity, final String log, final Calendar date, final LogType logType, final ReportProblemType reportProblem) {
         if (logType == LogType.UNKNOWN) {
             return;
         }
@@ -487,7 +490,7 @@ public class Geocache implements IWaypoint {
             DataStore.saveCache(this, LoadFlags.SAVE_ALL);
         }
 
-        final boolean status = DataStore.saveLogOffline(geocode, date.getTime(), logType, log);
+        final boolean status = DataStore.saveLogOffline(geocode, date.getTime(), logType, log, reportProblem);
 
         final Resources res = fromActivity.getResources();
         if (status) {
@@ -710,10 +713,10 @@ public class Geocache implements IWaypoint {
                     setLocation(partial.getLocation());
                 }
             } else {
-                description = StringUtils.defaultString(description);
-                shortdesc = StringUtils.defaultString(shortdesc);
-                hint = StringUtils.defaultString(hint);
-                location = StringUtils.defaultString(location);
+                setDescription(StringUtils.defaultString(description));
+                setShortDescription(StringUtils.defaultString(shortdesc));
+                setHint(StringUtils.defaultString(hint));
+                setLocation(StringUtils.defaultString(location));
             }
         }
     }
@@ -806,6 +809,7 @@ public class Geocache implements IWaypoint {
 
     public void setDescription(final String description) {
         this.description = description;
+        this.eventTimeMinutes = null; // will be recalculated if/when necessary
     }
 
     public boolean isFound() {
@@ -986,6 +990,7 @@ public class Geocache implements IWaypoint {
 
     public void setShortDescription(final String shortdesc) {
         this.shortdesc = shortdesc;
+        this.eventTimeMinutes = null; // will be recalculated if/when necessary
     }
 
     public void setFavoritePoints(final int favoriteCnt) {
@@ -1322,6 +1327,7 @@ public class Geocache implements IWaypoint {
             throw new IllegalArgumentException("Illegal cache type");
         }
         this.cacheType = new UncertainProperty<>(cacheType);
+        this.eventTimeMinutes = null; // will be recalculated if/when necessary
     }
 
     public void setType(final CacheType cacheType, final int zoomlevel) {
@@ -1329,6 +1335,7 @@ public class Geocache implements IWaypoint {
             throw new IllegalArgumentException("Illegal cache type");
         }
         this.cacheType = new UncertainProperty<>(cacheType, zoomlevel);
+        this.eventTimeMinutes = null; // will be recalculated if/when necessary
     }
 
     public boolean hasDifficulty() {
@@ -1398,26 +1405,8 @@ public class Geocache implements IWaypoint {
         return saveToDatabase && DataStore.saveWaypoint(waypoint.getId(), geocode, waypoint);
     }
 
-    /*
-     * Assigns a unique two-digit (compatibility with gc.com)
-     * prefix within the scope of this cache.
-     */
     private void assignUniquePrefix(final Waypoint waypoint) {
-        // gather existing prefixes
-        final Set<String> assignedPrefixes = new HashSet<>();
-        for (final Waypoint wp : waypoints) {
-            assignedPrefixes.add(wp.getPrefix());
-        }
-
-        for (int i = OWN_WP_PREFIX_OFFSET; i < 100; i++) {
-            final String prefixCandidate = String.valueOf(i);
-            if (!assignedPrefixes.contains(prefixCandidate)) {
-                waypoint.setPrefix(prefixCandidate);
-                return;
-            }
-        }
-
-        throw new IllegalStateException("too many waypoints, unable to assign unique prefix");
+        Waypoint.assignUniquePrefix(waypoint, waypoints);
     }
 
     public boolean hasWaypoints() {
@@ -1540,6 +1529,22 @@ public class Geocache implements IWaypoint {
     public Waypoint getWaypointById(final int id) {
         for (final Waypoint waypoint : waypoints) {
             if (waypoint.getId() == id) {
+                return waypoint;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Lookup a waypoint by its prefix.
+     *
+     * @param prefix
+     *            the prefix of the waypoint to look for
+     * @return waypoint or {@code null}
+     */
+    public Waypoint getWaypointByPrefix(final String prefix) {
+        for (final Waypoint waypoint : waypoints) {
+            if (waypoint.getPrefix().equals(prefix)) {
                 return waypoint;
             }
         }
@@ -1811,9 +1816,8 @@ public class Geocache implements IWaypoint {
         return !lists.isEmpty() && (lists.size() > 1 || lists.iterator().next() != StoredList.TEMPORARY_LIST.id);
     }
 
-    public int getEventTimeMinutes(){
-        if(eventTimeMinutes == null)
-        {
+    public int getEventTimeMinutes() {
+        if (eventTimeMinutes == null) {
             eventTimeMinutes = guessEventTimeMinutes();
         }
         return eventTimeMinutes.intValue();
@@ -1830,28 +1834,7 @@ public class Geocache implements IWaypoint {
         }
 
         final String searchText = getShortDescription() + ' ' + getDescription();
-        int start = -1;
-        int eventTimeMinutes = -1;
-        for (final Pattern pattern : eventTimePatterns) {
-            final MatcherWrapper matcher = new MatcherWrapper(pattern, searchText);
-            while (matcher.find()) {
-                try {
-                    final int hours = Integer.parseInt(matcher.group(1));
-                    int minutes = 0;
-                    if (matcher.groupCount() >= 2 && StringUtils.isNotEmpty(matcher.group(2))) {
-                        minutes = Integer.parseInt(matcher.group(2));
-                    }
-                    if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60
-                         && (eventTimeMinutes == -1 || matcher.start() < start)) {
-                            eventTimeMinutes = hours * 60 + minutes;
-                            start = matcher.start();
-                    }
-                } catch (final NumberFormatException ignored) {
-                    // cannot happen, but static code analysis doesn't know
-                }
-            }
-        }
-        return eventTimeMinutes;
+        return EventTimeParser.guessEventTimeMinutes(searchText);
     }
 
     public boolean hasStaticMap() {
@@ -1959,11 +1942,16 @@ public class Geocache implements IWaypoint {
         if (getLogCounts().isEmpty()) {
             setLogCounts(inDatabase() ? DataStore.loadLogCounts(getGeocode()) : Collections.<LogType, Integer>emptyMap());
         }
-        final Integer logged = getLogCounts().get(LogType.FOUND_IT);
-        if (logged != null) {
-            return logged;
+        int sumFound = 0;
+        for (final Entry<LogType, Integer> logCount : getLogCounts().entrySet()) {
+            if (logCount.getKey().isFoundLog()) {
+                final Integer logged = logCount.getValue();
+                if (logged != null) {
+                    sumFound += logged;
+                }
+            }
         }
-        return 0;
+        return sumFound;
     }
 
     public boolean applyDistanceRule() {
@@ -2018,5 +2006,16 @@ public class Geocache implements IWaypoint {
 
     public GeoitemRef getGeoitemRef() {
         return new GeoitemRef(getGeocode(), getCoordType(), getGeocode(), 0, getName(), getType().markerId);
+    }
+
+    @NonNull
+    public static String getAlternativeListingText(final String alternativeCode) {
+        return CgeoApplication.getInstance().getResources()
+                .getString(R.string.cache_listed_on, GCConnector.getInstance().getName()) +
+                ": <a href=\"https://coord.info/" +
+                alternativeCode +
+                "\">" +
+                alternativeCode +
+                "</a><br /><br />";
     }
 }

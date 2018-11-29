@@ -5,6 +5,11 @@ It does not require a web browser or exports - just download and start right awa
 
 Perfect! Please **tell us in the [issue tracker](https://github.com/cgeo/cgeo/issues) before hacking** on your great new feature. It would be bad if you have implemented something great, but we can't include it because it doesn't fit the remaining architecture and code. You might also want to chat with the developers on channel #cgeo on the freenode IRC network.
 
+### Starting points for contribution
+
+You can also take a look onto the [project page](https://github.com/cgeo/cgeo/projects) of our repository.
+For example we have a collection of [urgent issues](https://github.com/cgeo/cgeo/projects/6) and a list of [beginner topics](https://github.com/cgeo/cgeo/projects/7) which collects issues, which might be suitable for your first contribution.
+
 ## Project status
 
 [![Build Status](http://ci.cgeo.org/job/cgeo%20continuous%20integration/badge/icon)](http://ci.cgeo.org/job/cgeo%20continuous%20integration/)<br>
@@ -42,21 +47,25 @@ Here are instructions on how to setup the eclipse environment and clone the repo
 - On the third wizard page add your github user name and password. Adapt the "root installation folder", the folder cgeo will be created in there and everything will be downloaded and copied to the cgeo folder. That means that if you have a projects directory where you store many projects, it is a good candidate for root installation folder. The cgeo folder will ultimately consist of two folders, eclipse (that contains a whole eclipse installation) and git (that contains some git repository clones). Use Next and Finish to start the download of necessary Eclipse plugins and the cloning of the repositories.
 - In eclipse, the project will be uncompilable until you have copied the files keys.xml from main/templates to main/res/values (you need to do this because eclipse fails to create the file automatically from private.properties as Android Studio do). You have to change all values starting with @ and ending with @ (inclusive) with respective keys. If a key is missing, remove the respective value (together with the leading and trailing @).
 
+For debugging create a Debug Configuration by selecting the cgeo application (inside the cgeo) folder and press F11. Then choose to run as Android Application.
+
 ### Android Studio (or IntelliJ IDEA)
 - Install Android Studio from https://developer.android.com/sdk/index.html
 - On first start, choose to clone a project from version control, and choose github afterwards. Supply your credentials.
 - Android Studio should detect that gradle is used for building cgeo. If it complains that this is not a gradle project, then close the project. Choose "Import project" and select the `build.gradle` or `settings.gradle` in the root directory of the git repository.
+- c:geo uses [Checkstyle](http://checkstyle.sourceforge.net/) to verify that coding standards are followed throughout the project. To see violations directly in Android Studio you need to install the `CheckStyle-IDEA` Plugin and configure the `checkstyle.xml` file available in the project root directory.
 
 ## Build
 
 ### Prerequisites
 
-- [Android SDK](http://developer.android.com/sdk) (latest version) including Google APIs V23, Google repository and Android support repository.
+- [Android SDK](http://developer.android.com/sdk) (latest version) including Google APIs (at least) V26, Google repository and Android support repository.
 - If you use Microsoft Windows, [Google USB Driver](http://developer.android.com/sdk/win-usb.html) to install the application on the smartphone.
 - You need to provide several API keys for compiling the app. See next section for details.
 
 ### API keys
-Copy [`main/templates/keys.xml`](https://github.com/cgeo/cgeo/blob/master/main/templates/keys.xml) to `main/res/values/`. Then edit `main/res/values/keys.xml` and insert several keys (see comments in the file). Most important is the Google Maps API v1 key. You can leave it empty, but then Google Maps doesn't work. Google doesn't hand out new keys for Google Maps v1, you have to use an existing one.
+
+Google doesn't hand out new keys for Google Maps v1, you have to use an existing one. You can leave it empty, but then Google Maps doesn't work. 
 
 Request your personal API key for the various [OpenCaching](http://www.opencaching.eu/) sites we support. If you leave these blank, then those networks will remain disabled.
 * [opencaching.de OKAPI signup](http://www.opencaching.de/okapi/signup.html)
@@ -66,24 +75,27 @@ Request your personal API key for the various [OpenCaching](http://www.opencachi
 * [opencaching.us OKAPI signup](http://www.opencaching.us/okapi/signup.html)
 * [opencache.uk OKAPI signup](http://www.opencache.uk/okapi/signup.html)
 
-Request API key for OpenCycleMap from [Thunderforest](https://manage.thunderforest.com/users/sign_up?plan_id=5).
+For semi automatic configuration
+1. copy `./templates/private.properties` to `./`
+2. edit `private.properties` with your keys
+3. on the graddle build the `main/res/values/keys.xml` is created and filled with the data from `private.properties`
+
+If you want to do fill the `keys.xml` by hand copy `main/templates/keys.xml` to `main/res/values/`. Then edit `main/res/values/keys.xml`. For each key, replace the value starting with @ and ending with @ (inclusive) with the key. If a key is missing, remove the value and the leading and trailing @).
 
 ### Building with gradle
 
 Run `gradlew` from the root directory of the git repository. That will install the necessary build framework and display how to build cgeo. `gradlew assembleBasicDebug` might be a good start.
 
-### Debugging
-
-In Eclipse, create a Debug Configuration by selecting the cgeo application (inside the cgeo) folder and press F11. Then choose to run as Android Application.
-
 ### Testing
 
 The Test classes can be found in the project test. Test classes should be located in the same package as
 the class under test.
-Every class can be "Run As" (or "Debug As") an [Android JUnit Test](http://developer.android.com/guide/topics/testing/testing_android.html) from Eclipse.
-To run all tests use the same "Run As" menu item from the context menu of the test project.
+Every class can be run with `Run '<class name>'` or debugged with `Debug '<class name>'`) as an [Android JUnit Test](https://developer.android.com/training/testing/fundamentals.html).
+To run all tests use the same `Run 'Tests in <package name>'` menu item from the context menu of a package in the test project.
 
 For tests to run successfully you need to configure c:geo on the emulator that runs the test with a valid geocaching.com account. In order for all tests to be successfull the account needs to be a premium member.
+
+Tests may also be launched from command line. Use `gradlew assembleBasicDebug` from the root directory of the git repository.
 
 ## License
 

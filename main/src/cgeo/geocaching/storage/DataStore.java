@@ -20,6 +20,7 @@ import cgeo.geocaching.location.Geopoint;
 import cgeo.geocaching.location.Viewport;
 import cgeo.geocaching.log.LogEntry;
 import cgeo.geocaching.log.LogType;
+import cgeo.geocaching.log.ReportProblemType;
 import cgeo.geocaching.models.Destination;
 import cgeo.geocaching.models.Geocache;
 import cgeo.geocaching.models.Image;
@@ -90,10 +91,6 @@ public class DataStore {
     public static final String DB_FILE_NAME_BACKUP = "cgeo.sqlite";
     public static final String DB_FILE_CORRUPTED_EXTENSION = ".corrupted";
 
-    private DataStore() {
-        // utility class
-    }
-
     public enum StorageLocation {
         HEAP,
         CACHE,
@@ -162,7 +159,7 @@ public class DataStore {
                     "cg_caches.watchlistCount";          // 42
 
     /** The list of fields needed for mapping. */
-    private static final String[] WAYPOINT_COLUMNS = { "_id", "geocode", "updated", "type", "prefix", "lookup", "name", "latitude", "longitude", "note", "own", "visited", "user_note", "org_coords_empty" };
+    private static final String[] WAYPOINT_COLUMNS = { "_id", "geocode", "updated", "type", "prefix", "lookup", "name", "latitude", "longitude", "note", "own", "visited", "user_note", "org_coords_empty", "calc_state" };
 
     /** Number of days (as ms) after temporarily saved caches are deleted */
     private static final long DAYS_AFTER_CACHE_IS_DELETED = 3 * 24 * 60 * 60 * 1000;
@@ -172,7 +169,7 @@ public class DataStore {
      */
     private static final CacheCache cacheCache = new CacheCache();
     private static volatile SQLiteDatabase database = null;
-    private static final int dbVersion = 72;
+    private static final int dbVersion = 75;
     public static final int customListIdOffset = 10;
 
     @NonNull private static final String dbTableCaches = "cg_caches";
@@ -269,7 +266,8 @@ public class DataStore {
             + "own INTEGER DEFAULT 0, "
             + "visited INTEGER DEFAULT 0, "
             + "user_note TEXT, "
-            + "org_coords_empty INTEGER DEFAULT 0"
+            + "org_coords_empty INTEGER DEFAULT 0, "
+            + "calc_state TEXT"
             + "); ";
     private static final String dbCreateSpoilers = ""
             + "CREATE TABLE " + dbTableSpoilers + " ("
@@ -316,7 +314,8 @@ public class DataStore {
             + "updated LONG NOT NULL, " // date of save
             + "type INTEGER NOT NULL DEFAULT 4, "
             + "log TEXT, "
-            + "date LONG "
+            + "date LONG, "
+            + "report_problem TEXT"
             + "); ";
     private static final String dbCreateTrackables = ""
             + "CREATE TABLE " + dbTableTrackables + " ("
@@ -329,7 +328,10 @@ public class DataStore {
             + "released LONG, "
             + "goal TEXT, "
             + "description TEXT, "
-            + "geocode TEXT "
+            + "geocode TEXT, "
+            + "log_date LONG, "
+            + "log_type INTEGER, "
+            + "log_guid TEXT "
             + "); ";
 
     private static final String dbCreateSearchDestinationHistory = ""
@@ -339,6 +341,10 @@ public class DataStore {
             + "latitude DOUBLE, "
             + "longitude DOUBLE "
             + "); ";
+
+    private DataStore() {
+        // utility class
+    }
 
     private static final Single<Integer> allCachesCountObservable = Single.create(new SingleOnSubscribe<Integer>() {
         @Override
@@ -871,6 +877,34 @@ public class DataStore {
                             Log.e("Failed to upgrade to ver. 72", e);
                         }
                     }
+                    // Adds coord calculator state to the waypoint
+                    if (oldVersion < 73) {
+                        try {
+                            db.execSQL("ALTER TABLE " + dbTableWaypoints + " ADD COLUMN calc_state TEXT");
+                        } catch (final Exception e) {
+                            Log.e("Failed to upgrade to ver. 73", e);
+                        }
+                    }
+
+                    // Adds report problem to offline log
+                    if (oldVersion < 74) {
+                        try {
+                            db.execSQL("ALTER TABLE " + dbTableLogsOffline + " ADD COLUMN report_problem TEXT");
+                        } catch (final Exception e) {
+                            Log.e("Failed to upgrade to ver. 74", e);
+                        }
+                    }
+
+                    // Adds log information for trackables
+                    if (oldVersion < 75) {
+                        try {
+                            db.execSQL("ALTER TABLE " + dbTableTrackables + " ADD COLUMN log_date LONG");
+                            db.execSQL("ALTER TABLE " + dbTableTrackables + " ADD COLUMN log_type INTEGER");
+                            db.execSQL("ALTER TABLE " + dbTableTrackables + " ADD COLUMN log_guid TEXT");
+                        } catch (final Exception e) {
+                            Log.e("Failed to upgrade to ver. 75", e);
+                        }
+                    }
                 }
 
                 db.setTransactionSuccessful();
@@ -1125,6 +1159,27 @@ public class DataStore {
     }
 
     /**
+     * Save the cache for set/reset user modified coordinates
+     */
+    public static void saveUserModifiedCoords(final Geocache cache) {
+        database.beginTransaction();
+
+        final ContentValues values = new ContentValues();
+        try {
+            saveWaypointsWithoutTransaction(cache);
+            putCoords(values, cache.getCoords());
+            values.put("coordsChanged", cache.hasUserModifiedCoords() ? 1 : 0);
+
+            database.update(dbTableCaches, values, "geocode = ?", new String[] { cache.getGeocode() });
+            database.setTransactionSuccessful();
+        } catch (final Exception e) {
+            Log.e("SaveResetCoords", e);
+        } finally {
+            database.endTransaction();
+        }
+    }
+
+    /**
      * Save/store a cache to the CacheCache
      *
      * @param cache
@@ -1366,30 +1421,16 @@ public class DataStore {
         final List<Waypoint> waypoints = cache.getWaypoints();
         if (CollectionUtils.isNotEmpty(waypoints)) {
             final List<String> currentWaypointIds = new ArrayList<>();
-            final ContentValues values = new ContentValues();
-            final long timeStamp = System.currentTimeMillis();
-            for (final Waypoint oneWaypoint : waypoints) {
+            for (final Waypoint waypoint : waypoints) {
+                final ContentValues values = createWaypointValues(geocode, waypoint);
 
-                values.clear();
-                values.put("geocode", geocode);
-                values.put("updated", timeStamp);
-                values.put("type", oneWaypoint.getWaypointType() != null ? oneWaypoint.getWaypointType().id : null);
-                values.put("prefix", oneWaypoint.getPrefix());
-                values.put("lookup", oneWaypoint.getLookup());
-                values.put("name", oneWaypoint.getName());
-                putCoords(values, oneWaypoint.getCoords());
-                values.put("note", oneWaypoint.getNote());
-                values.put("own", oneWaypoint.isUserDefined() ? 1 : 0);
-                values.put("visited", oneWaypoint.isVisited() ? 1 : 0);
-                values.put("user_note", oneWaypoint.getUserNote());
-                values.put("org_coords_empty", oneWaypoint.isOriginalCoordsEmpty() ? 1 : 0);
-                if (oneWaypoint.getId() < 0) {
+                if (waypoint.getId() < 0) {
                     final long rowId = database.insert(dbTableWaypoints, null, values);
-                    oneWaypoint.setId((int) rowId);
+                    waypoint.setId((int) rowId);
                 } else {
-                    database.update(dbTableWaypoints, values, "_id = ?", new String[] { Integer.toString(oneWaypoint.getId(), 10) });
+                    database.update(dbTableWaypoints, values, "_id = ?", new String[] { Integer.toString(waypoint.getId(), 10) });
                 }
-                currentWaypointIds.add(Integer.toString(oneWaypoint.getId()));
+                currentWaypointIds.add(Integer.toString(waypoint.getId()));
             }
 
             removeOutdatedWaypointsOfCache(cache, currentWaypointIds);
@@ -1450,19 +1491,8 @@ public class DataStore {
         database.beginTransaction();
         boolean ok = false;
         try {
-            final ContentValues values = new ContentValues();
-            values.put("geocode", geocode);
-            values.put("updated", System.currentTimeMillis());
-            values.put("type", waypoint.getWaypointType() != null ? waypoint.getWaypointType().id : null);
-            values.put("prefix", waypoint.getPrefix());
-            values.put("lookup", waypoint.getLookup());
-            values.put("name", waypoint.getName());
-            putCoords(values, waypoint.getCoords());
-            values.put("note", waypoint.getNote());
-            values.put("user_note", waypoint.getUserNote());
-            values.put("own", waypoint.isUserDefined() ? 1 : 0);
-            values.put("visited", waypoint.isVisited() ? 1 : 0);
-            values.put("org_coords_empty", waypoint.isOriginalCoordsEmpty() ? 1 : 0);
+            final ContentValues values = createWaypointValues(geocode, waypoint);
+
             if (id <= 0) {
                 final long rowId = database.insert(dbTableWaypoints, null, values);
                 waypoint.setId((int) rowId);
@@ -1477,6 +1507,25 @@ public class DataStore {
         }
 
         return ok;
+    }
+
+    @NonNull
+    private static ContentValues createWaypointValues(final String geocode, final Waypoint waypoint) {
+        final ContentValues values = new ContentValues();
+        values.put("geocode", geocode);
+        values.put("updated", System.currentTimeMillis());
+        values.put("type", waypoint.getWaypointType() != null ? waypoint.getWaypointType().id : null);
+        values.put("prefix", waypoint.getPrefix());
+        values.put("lookup", waypoint.getLookup());
+        values.put("name", waypoint.getName());
+        putCoords(values, waypoint.getCoords());
+        values.put("note", waypoint.getNote());
+        values.put("user_note", waypoint.getUserNote());
+        values.put("own", waypoint.isUserDefined() ? 1 : 0);
+        values.put("visited", waypoint.isVisited() ? 1 : 0);
+        values.put("org_coords_empty", waypoint.isOriginalCoordsEmpty() ? 1 : 0);
+        values.put("calc_state", waypoint.getCalcStateJson());
+        return values;
     }
 
     public static boolean deleteWaypoint(final int id) {
@@ -1618,6 +1667,20 @@ public class DataStore {
                 }
                 values.put("goal", trackable.getGoal());
                 values.put("description", trackable.getDetails());
+
+                final Date logDate = trackable.getLogDate();
+                if (logDate != null) {
+                    values.put("log_date", logDate.getTime());
+                } else {
+                    values.put("log_date", 0L);
+                }
+                final LogType logType = trackable.getLogType();
+                if (logType != null) {
+                    values.put("log_type", trackable.getLogType().id);
+                } else {
+                    values.put("log_type", 0);
+                }
+                values.put("log_guid", trackable.getLogGuid());
 
                 database.insert(dbTableTrackables, null, values);
 
@@ -2003,6 +2066,7 @@ public class DataStore {
         waypoint.setNote(cursor.getString(cursor.getColumnIndex("note")));
         waypoint.setUserNote(cursor.getString(cursor.getColumnIndex("user_note")));
         waypoint.setOriginalCoordsEmpty(cursor.getInt(cursor.getColumnIndex("org_coords_empty")) != 0);
+        waypoint.setCalcStateJson(cursor.getString(cursor.getColumnIndex("calc_state")));
 
         return waypoint;
     }
@@ -2164,7 +2228,7 @@ public class DataStore {
 
         final Cursor cursor = database.query(
                 dbTableTrackables,
-                new String[]{"_id", "updated", "tbcode", "guid", "title", "owner", "released", "goal", "description"},
+                new String[]{"_id", "updated", "tbcode", "guid", "title", "owner", "released", "goal", "description", "log_date", "log_type", "log_guid"},
                 "geocode = ?",
                 new String[]{geocode},
                 null,
@@ -2224,6 +2288,17 @@ public class DataStore {
         }
         trackable.setGoal(cursor.getString(cursor.getColumnIndex("goal")));
         trackable.setDetails(cursor.getString(cursor.getColumnIndex("description")));
+        final String logDate = cursor.getString(cursor.getColumnIndex("log_date"));
+        if (logDate != null) {
+            try {
+                final long logDateMillis = Long.parseLong(logDate);
+                trackable.setLogDate(new Date(logDateMillis));
+            } catch (final NumberFormatException e) {
+                Log.e("createTrackableFromDatabaseContent", e);
+            }
+        }
+        trackable.setLogType(LogType.getById(cursor.getInt(cursor.getColumnIndex("log_type"))));
+        trackable.setLogGuid(cursor.getString(cursor.getColumnIndex("log_guid")));
         trackable.setLogs(loadLogs(trackable.getGeocode()));
         return trackable;
     }
@@ -2607,7 +2682,7 @@ public class DataStore {
         }
     }
 
-    public static boolean saveLogOffline(final String geocode, final Date date, final LogType type, final String log) {
+    public static boolean saveLogOffline(final String geocode, final Date date, final LogType type, final String log, final ReportProblemType reportProblem) {
         if (StringUtils.isBlank(geocode)) {
             Log.e("DataStore.saveLogOffline: cannot log a blank geocode");
             return false;
@@ -2625,6 +2700,7 @@ public class DataStore {
         values.put("type", type.id);
         values.put("log", log);
         values.put("date", date.getTime());
+        values.put("report_problem", reportProblem.code);
 
         if (hasLogOffline(geocode)) {
             final int rows = database.update(dbTableLogsOffline, values, "geocode = ?", new String[] { geocode });
@@ -2645,7 +2721,7 @@ public class DataStore {
 
         final Cursor cursor = database.query(
                 dbTableLogsOffline,
-                new String[]{"_id", "type", "log", "date"},
+                new String[]{"_id", "type", "log", "date", "report_problem"},
                 "geocode = ?",
                 new String[]{geocode},
                 null,
@@ -2660,6 +2736,7 @@ public class DataStore {
                     .setLogType(LogType.getById(cursor.getInt(1)))
                     .setLog(cursor.getString(2))
                     .setId(cursor.getInt(0))
+                    .setReportProblem(cursor.getString(4))
                     .build();
         }
 

@@ -1,6 +1,8 @@
 package cgeo.geocaching.network;
 
 import cgeo.geocaching.CgeoApplication;
+import cgeo.geocaching.connector.gc.GCMemberState;
+import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.utils.AndroidRxUtils;
 import cgeo.geocaching.utils.Version;
 
@@ -31,9 +33,8 @@ public class StatusUpdater {
     public static class Status {
 
         public static final Status NO_STATUS = new Status(null, null, null, null);
-
         static final Status CLOSEOUT_STATUS =
-                new Status("", "status_closeout_warning", "attribute_abandonedbuilding", "http://faq.cgeo.org/#legacy");
+            new Status("", "status_closeout_warning_41", "attribute_abandonedbuilding", "https://www.cgeo.org/faq#legacy");
 
         public final String message;
         public final String messageId;
@@ -59,7 +60,7 @@ public class StatusUpdater {
             if (upToDate != null && upToDate.message != null) {
                 return upToDate;
             }
-            return VERSION.SDK_INT < VERSION_CODES.ICE_CREAM_SANDWICH ? CLOSEOUT_STATUS : NO_STATUS;
+            return VERSION.SDK_INT < VERSION_CODES.JELLY_BEAN ? CLOSEOUT_STATUS : NO_STATUS;
         }
     }
 
@@ -70,10 +71,18 @@ public class StatusUpdater {
                 final Application app = CgeoApplication.getInstance();
                 final String installer = Version.getPackageInstaller(app);
                 final Parameters installerParameters = StringUtils.isNotBlank(installer) ? new Parameters("installer", installer) : null;
+                final Parameters gcMembershipParameters;
+                if (Settings.isGCConnectorActive()) {
+                    final GCMemberState memberState = Settings.getGCMemberStatus();
+                    gcMembershipParameters = new Parameters("gc_membership",
+                            memberState == GCMemberState.PREMIUM || memberState == GCMemberState.CHARTER ? "premium" : "basic");
+                } else {
+                    gcMembershipParameters = null;
+                }
                 Network.requestJSON("https://status.cgeo.org/api/status.json",
                         Parameters.merge(new Parameters("version_code", String.valueOf(Version.getVersionCode(app)),
                                 "version_name", Version.getVersionName(app),
-                                "locale", Locale.getDefault().toString()), installerParameters))
+                                "locale", Locale.getDefault().toString()), installerParameters, gcMembershipParameters))
                         .subscribe(new Consumer<ObjectNode>() {
                             @Override
                             public void accept(final ObjectNode json) {
@@ -82,7 +91,7 @@ public class StatusUpdater {
                         }, new Consumer<Throwable>() {
                             @Override
                             public void accept(final Throwable throwable) {
-                                // Error has already been signalled during the request
+                                // Error has already been signaled during the request
                             }
                         });
             }

@@ -1,9 +1,6 @@
 package cgeo.geocaching;
 
-import android.test.suitebuilder.annotation.MediumTest;
-import android.test.suitebuilder.annotation.SmallTest;
-
-import java.util.GregorianCalendar;
+import static org.assertj.core.api.Java6Assertions.assertThat;
 
 import cgeo.CGeoTestCase;
 import cgeo.geocaching.connector.ConnectorFactory;
@@ -26,7 +23,6 @@ import cgeo.geocaching.settings.Credentials;
 import cgeo.geocaching.settings.Settings;
 import cgeo.geocaching.settings.TestSettings;
 import cgeo.geocaching.storage.DataStore;
-import cgeo.geocaching.test.mock.GC1ZXX2;
 import cgeo.geocaching.test.mock.GC2JVEH;
 import cgeo.geocaching.test.mock.GC3FJ5F;
 import cgeo.geocaching.test.mock.MockedCache;
@@ -34,7 +30,10 @@ import cgeo.geocaching.utils.DisposableHandler;
 import cgeo.geocaching.utils.Log;
 import cgeo.test.Compare;
 
-import static org.assertj.core.api.Java6Assertions.assertThat;
+import android.test.suitebuilder.annotation.MediumTest;
+import android.test.suitebuilder.annotation.SmallTest;
+
+import java.util.GregorianCalendar;
 
 /**
  * The c:geo application test. It can be used for tests that require an
@@ -76,10 +75,13 @@ public class CgeoApplicationTest extends CGeoTestCase {
         // fix data
         assertThat(tb.getGuid()).isEqualTo("aefffb86-099f-444f-b132-605436163aa8");
         assertThat(tb.getGeocode()).isEqualTo("TB2J1VZ");
-        assertThat(tb.getIconUrl()).endsWith("://www.geocaching.com/images/wpttypes/21.gif");
+        assertThat(tb.getIconUrl()).endsWith("://www.geocaching.com/images/WptTypes/21.gif");
         assertThat(tb.getName()).isEqualTo("blafoo's Children Music CD");
         assertThat(tb.getType()).isEqualTo("Travel Bug Dog Tag");
         assertThat(tb.getReleased()).isEqualTo(new GregorianCalendar(2009, 8 - 1, 24).getTime());
+        assertThat(tb.getLogDate()).isNull();
+        assertThat(tb.getLogType()).isNull();
+        assertThat(tb.getLogGuid()).isNull();
         assertThat(tb.getOrigin()).isEqualTo("Niedersachsen, Germany");
         assertThat(tb.getOwner()).isEqualTo("blafoo");
         assertThat(tb.getOwnerGuid()).isEqualTo("0564a940-8311-40ee-8e76-7e91b2cf6284");
@@ -186,27 +188,6 @@ public class CgeoApplicationTest extends CGeoTestCase {
     }
 
     /**
-     * Test {@link Geocache#searchByGeocode(String, String, boolean, DisposableHandler)}
-     */
-    @MediumTest
-    public static void testSearchErrorOccured() {
-        withMockedLoginDo(new Runnable() {
-
-            @Override
-            public void run() {
-                // non premium cache
-                final MockedCache cache = new GC1ZXX2();
-
-                deleteCacheFromDBAndLogout(cache.getGeocode());
-
-                final SearchResult search = Geocache.searchByGeocode(cache.getGeocode(), null, true, null);
-                assertThat(search).isNotNull();
-                assertThat(search.getGeocodes()).isEmpty();
-            }
-        });
-    }
-
-    /**
      * mock the "exclude disabled caches" and "exclude my caches" options for the execution of the runnable
      *
      */
@@ -256,7 +237,7 @@ public class CgeoApplicationTest extends CGeoTestCase {
             public void run() {
                 final SearchResult search = GCParser.searchByOwner("blafoo", CacheType.MYSTERY);
                 assertThat(search).isNotNull();
-                assertThat(search.getGeocodes()).hasSize(7);
+                assertThat(search.getGeocodes()).hasSize(8);
                 assertThat(search.getGeocodes()).contains("GC36RT6");
             }
         });
@@ -273,7 +254,7 @@ public class CgeoApplicationTest extends CGeoTestCase {
             public void run() {
                 final SearchResult search = GCParser.searchByUsername("blafoo", CacheType.WEBCAM);
                 assertThat(search).isNotNull();
-                assertThat(search.getTotalCountGC()).isEqualTo(5);
+                assertThat(search.getTotalCountGC()).isEqualTo(10);
                 assertThat(search.getGeocodes()).contains("GCP0A9");
             }
         });
@@ -377,10 +358,10 @@ public class CgeoApplicationTest extends CGeoTestCase {
                     }
 
                     { // premium cache
-                        final MockedCache cache = new MockedCache(new Geopoint(49.010183, 2.566117)) {
+                        final MockedCache cache = new MockedCache(new Geopoint(51.338717, 7.032750)) {
                             @Override
                             public String getGeocode() {
-                                return "GC1K1W4";
+                                return "GC6K70B";
                             }
                         };
                         deleteCacheFromDBAndLogout(cache.getGeocode());

@@ -4,6 +4,7 @@ import cgeo.geocaching.connector.ConnectorFactory;
 import cgeo.geocaching.connector.trackable.TrackableBrand;
 import cgeo.geocaching.connector.trackable.TrackableConnector;
 import cgeo.geocaching.log.LogEntry;
+import cgeo.geocaching.log.LogType;
 import cgeo.geocaching.log.LogTypeTrackable;
 import cgeo.geocaching.utils.HtmlUtils;
 import cgeo.geocaching.utils.ImageUtils;
@@ -38,6 +39,9 @@ public class Trackable implements ILogable {
     private String type = null;
     @Nullable
     private Date released = null;
+    private Date logDate = null;
+    private String logGuid;
+    private LogType logType;
     private float distance = -1;
     private String origin = null;
     private String owner = null;
@@ -69,6 +73,9 @@ public class Trackable implements ILogable {
 
         type = ObjectUtils.defaultIfNull(newTrackable.type, type);
         released = ObjectUtils.defaultIfNull(newTrackable.released, released);
+        logDate = ObjectUtils.defaultIfNull(newTrackable.logDate, logDate);
+        logType = ObjectUtils.defaultIfNull(newTrackable.logType, logType);
+        logGuid = ObjectUtils.defaultIfNull(newTrackable.logGuid, logGuid);
         distance = newTrackable.distance == -1 ? distance : newTrackable.distance;
         origin = ObjectUtils.defaultIfNull(newTrackable.origin, origin);
         owner = ObjectUtils.defaultIfNull(newTrackable.owner, owner);
@@ -212,6 +219,35 @@ public class Trackable implements ILogable {
 
     public void setReleased(@Nullable final Date released) {
         this.released = released == null ? null : new Date(released.getTime()); // avoid storing external reference in this object
+    }
+
+    @Nullable
+    public Date getLogDate() {
+        if (logDate != null) {
+            return new Date(logDate.getTime());
+        }
+        return null;
+    }
+
+    public void setLogDate(@Nullable final Date logDate) {
+        // avoid storing external reference in this object
+        this.logDate = logDate != null ? new Date(logDate.getTime()) : null;
+    }
+
+    public LogType getLogType() {
+        return logType;
+    }
+
+    public void setLogType(final LogType logType) {
+        this.logType = logType;
+    }
+
+    public void setLogGuid(final String logGuid) {
+        this.logGuid = logGuid;
+    }
+
+    public String getLogGuid() {
+        return logGuid;
     }
 
     public float getDistance() {
@@ -375,4 +411,5 @@ public class Trackable implements ILogable {
 
         return logTypes;
     }
+
 }

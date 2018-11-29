@@ -36,7 +36,6 @@ import android.R.string;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.app.backup.BackupManager;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -329,6 +328,7 @@ public class SettingsActivity extends PreferenceActivity implements Preference.O
                 return false;
             }
 
+            @SuppressWarnings("null")
             @NonNull
             @Override
             public View getView(final int position, @Nullable final View convertView, @NonNull final ViewGroup parent) {
@@ -445,7 +445,7 @@ public class SettingsActivity extends PreferenceActivity implements Preference.O
             dirChooser.putExtra(FileManagerIntents.EXTRA_BUTTON_TEXT,
                     getString(string.ok));
             startActivityForResult(dirChooser, dct.requestCode);
-        } catch (final ActivityNotFoundException ignored) {
+        } catch (final RuntimeException ignored) {
             // OI file manager not available
             final Intent dirChooser = new Intent(this, SimpleDirChooser.class);
             dirChooser.putExtra(Intents.EXTRA_START_DIR, startDirectory);

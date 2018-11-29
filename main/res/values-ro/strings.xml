@@ -124,10 +124,24 @@
   <string name="log_image_description">Descriere</string>
   <string name="log_image_scale">Mărire</string>
   <string name="log_password_title">Parolă:</string>
+  <string name="log_report_problem">Report Problem:</string>
   <string name="log_hint_log_password">Introdu parola pentru jurnal</string>
   <string name="log_oc_team_comment">Comentariu din partea echipei OC</string>
   <string name="log_your_saved_log">Însemnare salvată</string>
   <string name="log_empty_logbook">Jurnalul acestei geocutii este gol.</string>
+  <string name="log_problem_none">No Problem</string>
+  <string name="log_problem_needs_maintenance_label">Needs Maintenance</string>
+  <string name="log_problem_needs_maintenance_text">This geocacher reported that there is a problem with this cache.</string>
+  <string name="log_problem_log_full_label">Logbook is full</string>
+  <string name="log_problem_log_full_text">This geocacher reported that the logbook is full.</string>
+  <string name="log_problem_damaged_label">Container is damaged</string>
+  <string name="log_problem_damaged_text">This geocacher reported that the container is damaged.</string>
+  <string name="log_problem_missing_label">Cache might be missing</string>
+  <string name="log_problem_missing_text">This geocacher reported that the cache might be missing.</string>
+  <string name="log_problem_other_label">Other</string>
+  <string name="log_problem_other_text">This geocacher reported that there is a problem with this cache.</string>
+  <string name="log_problem_archive_label">Cache should be archived</string>
+  <string name="log_problem_archive_text">This geocacher reported that this geocache should be archived. A community volunteer reviewer has been notified.</string>
   <string-array name="log_image_scales">
     <item>Fără redimensionare</item>
     <item>512 px</item>
@@ -230,6 +244,7 @@
   <string name="warn_rendertheme_missing">Stilul hărţii nu a fost găsit.</string>
   <string name="warn_pocket_query_select">Nu a fost selectat nici un \"Pocket Query\".</string>
   <string name="warn_no_pocket_query_found">Nu a fost găsit nici un \"Pocket Query\".</string>
+  <string name="warn_invalid_character">Trebuie să tastezi numai LITERE sau CIFRE</string>
   <string name="err_read_pocket_query_list">Eroare la citirea listei \"Pocket query\".</string>
   <string name="info_log_posted">c:geo a trimis însemnarea.</string>
   <string name="info_log_saved">c:geo a salvat însemnarea.</string>
@@ -238,15 +253,21 @@
   <string name="info_log_post_retry">Încearcă din nou</string>
   <string name="info_log_post_save">Salvează local</string>
   <string name="info_log_cleared">Însemnarea a fost ştearsă.</string>
+  <string name="info_waypoint_coordinates_cleared">Coordonate anulate.</string>
   <string name="info_log_type_changed">Tipul însemnării a fost schimbat!</string>
+  <string name="info_log_report_problem_changed">Available problem reports have changed!</string>
   <string name="info_select_logimage_cancelled">Selecţia sau captura de imagine a fost anulată.</string>
   <string name="info_stored_image">Imaginea a fost salvată aici:</string>
   <string name="info_storing_static_maps">Încerc să salvez hărţi</string>
   <string name="info_cache_saved">Geocutia a fost salvată local</string>
+  <string name="warn_calculator_state_save">Asigură-te că ai salvat punctul dacă vrei să păstrezi stearea în care se află calculatorul de coordonate.</string>
   <string name="err_trackable_log_not_anonymous">Prin intermediul c:geo nu se poate publica anonim însemnarea %1$s. Vrei să mergi la setări şi să-ţi configurezi contul la %2$s?</string>
   <string name="err_trackable_no_preference_activity">Ecranul de configurare adecvat nu a fost găsit.</string>
+  <string name="confirm_unsaved_changes_title">Modificări nesalvate</string>
+  <string name="confirm_discard_wp_changes">Renunţă la modificările nesalvate de la acest punct?</string>
   <string name="warn_discard_changes">Modificările nesalvate vor fi anulate!</string>
   <string name="err_request_popup_info">c:geo nu a reuşit să obţină informaţiile minime despre geocutie.</string>
+  <string name="warn_log_load_additional_data">c:geo failed to load additional data (trackables/favorite points) for logging.</string>
   <!-- location service -->
   <string name="loc_last">Ultima poziţie cunoscută</string>
   <string name="loc_net">Reţea</string>
@@ -289,6 +310,8 @@
     <item quantity="other">%d minute</item>
   </plurals>
   <string name="caches_store_offline">Salvează local</string>
+  <string name="caches_store_all">Salvează pe toate</string>
+  <string name="caches_store_unsaved">Salvează nesalvate</string>
   <string name="caches_store_selected">Salvează cutiile selectate</string>
   <string name="caches_history">Istoric</string>
   <string name="caches_on_map">Arată pe hartă</string>
@@ -393,8 +416,8 @@
   <string name="about_version">Versiune</string>
   <string name="about_changelog">Istoric modificări</string>
   <string name="about_system">Sistem</string>
-  <string name="about_donate">Donează</string>
-  <string name="about_donation_more">Donează pentru\ndezvoltare</string>
+  <string name="about_donate">Support us</string>
+  <string name="about_donation_more">Visit website for info</string>
   <string name="about_contributors">Contribuitori</string>
   <string name="about_license">Licenţă</string>
   <string name="about_apache_license"><a href="">Apache License, Version 2.0</a></string>
@@ -511,8 +534,11 @@
   <string name="init_signature_template_number">Număr</string>
   <string name="init_signature_template_owner">Proprietar</string>
   <string name="init_signature_template_name">Nume</string>
+  <string name="init_signature_template_difficulty">Difficulty</string>
+  <string name="init_signature_template_terrain">Terrain</string>
   <string name="init_signature_template_url">URL</string>
   <string name="init_signature_template_log">Text însemnare</string>
+  <string name="init_signature_template_size">Size</string>
   <string name="init_ratingwanted">Voturi GCvote</string>
   <string name="init_summary_ratingwanted">Încarcă voturi de la GCvote.com</string>
   <string name="init_friends_and_own_logs_wanted">Arată ale mele/ale prietenilor</string>
@@ -653,6 +679,9 @@
   <string name="feature_search_geocode">Caută după geocod</string>
   <string name="feature_search_owner">Caută după proprietar</string>
   <string name="feature_search_finder">Caută după găsitor</string>
+  <string name="init_mapsforge_api_title">Mapsforge API</string>
+  <string name="init_mfold_api">Old Mapsforge V3</string>
+  <string name="init_mfold_api_description">The current release contains a beta version of our new Mapsforge map. If you miss some features or encounter issues you can go back to the old version here.</string>
   <string name="init_experimental_title">Funcţionalităţi experimentale</string>
   <string name="init_mfbeta">Mapsforge beta ca implicit</string>
   <string name="init_mfbeta_description">Versiunea curentă conţine o versiune beta a noii hărţi Mapsforge ca funcţionalitate experimentală. Aceasta poate fi activată aici ca hartă implicită pentru harta curentă, respectiv harţile de liste.</string>
@@ -748,6 +777,12 @@
     <item quantity="few">acum %d zile</item>
     <item quantity="other">acum %d zile</item>
   </plurals>
+  <plurals name="cache_offline_about_time_months">
+    <item quantity="one">about %d month ago</item>
+    <item quantity="few">about %d months ago</item>
+    <item quantity="other">about %d months ago</item>
+  </plurals>
+  <string name="cache_offline_about_time_year">over a year ago</string>
   <string name="cache_offline_time_hour">o oră în urmă</string>
   <string name="cache_offline_time_hours">ore în urmă</string>
   <string name="cache_offline_time_days">zile în urmă</string>
@@ -889,6 +924,7 @@
   <string name="cache_event">Data</string>
   <string name="cache_location">Locaţie</string>
   <string name="cache_coordinates">Coordonate</string>
+  <string name="cache_calculator">Calculator</string>
   <string name="cache_coordinates_original">Coordonatele iniţiale</string>
   <string name="cache_spoiler_images_title">Imagini (indicii?)</string>
   <string name="cache_log_types">Tipuri de însemnări</string>
@@ -952,6 +988,7 @@
   <string name="waypoint">Punct</string>
   <string name="waypoint_coordinates">Coordonate</string>
   <string name="waypoint_cache_coordinates">Coordonate cutie</string>
+  <string name="waypoint_calculate_coordinates">Calculator de coordonate</string>
   <string name="waypoint_custom">Personalizat</string>
   <string name="waypoint_my_coordinates">Coordonatele mele</string>
   <string name="waypoint_bearing">Azimut în °</string>
@@ -959,6 +996,7 @@
   <string name="waypoint_name">Nume</string>
   <string name="waypoint_edit">Modifică</string>
   <string name="waypoint_copy_coordinates">Copiază coordonatele</string>
+  <string name="waypoint_clear_coordinates">Şterge coordonate</string>
   <string name="waypoint_delete">Şterge</string>
   <string name="waypoint_edit_title">Modifică punct</string>
   <string name="waypoint_add_title">Adaugă punct</string>
@@ -986,6 +1024,7 @@
   <string name="waypoint_duplicate">Duplică punct</string>
   <string name="waypoint_duplicated">Punct duplicat</string>
   <string name="waypoint_copy_of">Copie după</string>
+  <string name="waypointcalc_notes_prompt">Introduceţi aici observaţiile…</string>
   <string name="search_history">Istoric</string>
   <string name="search_history_empty">Nu există destinaţii</string>
   <string name="search_remove_destination">Destinaţie ştearsă</string>
@@ -1408,7 +1447,7 @@
   <string name="status_geocaching_change" tools:ignore="UnusedResources">Modificările recente de pe geocaching.com fac c:geo nefuncţional.\nLucrăm la asta, revin-o.</string>
   <string name="status_geocaching_livemap" tools:ignore="UnusedResources">Modificările recente de pe geocaching.com fac harta nefuncţională.\nLucrăm la asta, revin-o.</string>
   <string name="status_geocaching_maintenance" tools:ignore="UnusedResources">Se efectuează lucrări de întreţinere la geocaching.com.\nEste posibil ca în această perioadă să apară diverse probleme.</string>
-  <string name="status_closeout_warning" tools:ignore="UnusedResources">Se pare că foloseşti o versiune de Android mai veche de 4.0. Versiuni ulterioare de c:geo s-ar putea să nu mai fie disponibile pentru dispozitivul tău.</string>
+  <string name="status_closeout_warning_41" tools:ignore="UnusedResources">You appear to be using a version of Android older than 4.1. Future releases of c:geo might no longer be available for your device.</string>
   <!-- text-to-speech for compass view -->
   <string name="tts_service">Busolă vorbitoare</string>
   <string name="tts_start">Vorbeşte</string>
@@ -1459,8 +1498,10 @@
   <string name="cgeo_shortcut">legătură la c:geo</string>
   <string name="create_shortcut">Crează scurtătură</string>
   <string name="send">Trimite</string>
-  <string name="confirm_log_title">Tip neobişnuit de însemnare</string>
+  <string name="confirm_log_title">Însemnare specială</string>
   <string name="confirm_log_message">Vrei să scrii o însemnare pentru \'%s\'. Eşti sigur?</string>
+  <string name="confirm_report_problem_title">Report problem</string>
+  <string name="confirm_report_problem_message">You want to report \'%s\'. Are you sure?</string>
   <!-- Geokrety -->
   <string name="settings_activate_geokrety">Activează</string>
   <string name="init_geokrety">GeoKrety.org</string>
@@ -1529,10 +1570,15 @@
     <item quantity="few">%d puncte extrase</item>
     <item quantity="other">%d puncte extrase</item>
   </plurals>
+  <string name="link_gc_checker">geocaching.com coordinate checker available via browser</string>
   <!-- calendar adder -->
   <string name="event_fail">Evenimentul nu a putut fi adăugat la calendar</string>
   <string name="init_low_disk_space">Nu mai este suficient spaţiu de stocare disponibil</string>
   <string name="init_low_disk_space_message">Nu mai este suficient spaţiu de stocare disponibil pentru geocutii. Aceasta poate împiedica buna funcţionare a c:geo. Te rog eliberează nişte spaţiu de stocare.</string>
   <string name="init_confirm_debug">c:geo funcţionează acum în mod \"depanare\"!</string>
   <string name="list_confirm_debug_message">Modul \"depanare\" poate cauza instabilitate. Vrei să revii la modul normal de funcţionare?</string>
+  <string name="err_select_logimage_upload_size">Imaginea este prea mare, te rog alege o rezoluţie mai mică.</string>
+  <string name="err_logimage_caption_required">Trebuie introdusă o scurtă descriere pentru această imagine</string>
+  <string name="waypoint_latitude_null">N/S --° --.---</string>
+  <string name="waypoint_longitude_null">E/W --° --.---</string>
 </resources>

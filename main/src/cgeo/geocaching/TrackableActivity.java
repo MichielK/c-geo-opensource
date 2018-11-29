@@ -20,8 +20,7 @@ import cgeo.geocaching.ui.AbstractCachingPageViewCreator;
 import cgeo.geocaching.ui.AnchorAwareLinkMovementMethod;
 import cgeo.geocaching.ui.CacheDetailsCreator;
 import cgeo.geocaching.ui.ImagesList;
-import cgeo.geocaching.ui.UserActionsClickListener;
-import cgeo.geocaching.ui.UserNameClickListener;
+import cgeo.geocaching.ui.UserClickListener;
 import cgeo.geocaching.ui.dialog.Dialogs;
 import cgeo.geocaching.utils.AndroidRxUtils;
 import cgeo.geocaching.utils.Formatter;
@@ -462,11 +461,25 @@ public class TrackableActivity extends AbstractViewPagerActivity<TrackableActivi
             // trackable geocode
             addContextMenu(details.add(R.string.trackable_code, trackable.getGeocode()).right);
 
+            // retrieved status
+            final Date logDate = trackable.getLogDate();
+            final LogType logType = trackable.getLogType();
+            if (logDate != null && logType != null) {
+                final Uri uri = new Uri.Builder().scheme("https").authority("www.geocaching.com").path("/track/log.aspx").encodedQuery("LUID=" + trackable.getLogGuid()).build();
+                final TextView logView = details.add(R.string.trackable_status, res.getString(R.string.trackable_found, Html.fromHtml(logType.type), Formatter.formatDate(logDate.getTime()))).right;
+                logView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(final View v) {
+                        startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                    }
+                });
+            }
+
             // trackable owner
             final TextView owner = details.add(R.string.trackable_owner, res.getString(R.string.trackable_unknown)).right;
             if (StringUtils.isNotBlank(trackable.getOwner())) {
                 owner.setText(Html.fromHtml(trackable.getOwner()), TextView.BufferType.SPANNABLE);
-                owner.setOnClickListener(new UserActionsClickListener(trackable));
+                owner.setOnClickListener(UserClickListener.forOwnerOf(trackable));
             }
 
             // trackable spotted
@@ -529,9 +542,9 @@ public class TrackableActivity extends AbstractViewPagerActivity<TrackableActivi
                         }
                     });
                 } else if (trackable.getSpottedType() == Trackable.SPOTTED_USER) {
-                    spotted.setOnClickListener(new UserNameClickListener(trackable, TextUtils.stripHtml(trackable.getSpottedName())));
+                    spotted.setOnClickListener(UserClickListener.forUser(trackable, TextUtils.stripHtml(trackable.getSpottedName())));
                 } else if (trackable.getSpottedType() == Trackable.SPOTTED_OWNER) {
-                    spotted.setOnClickListener(new UserNameClickListener(trackable, TextUtils.stripHtml(trackable.getOwner())));
+                    spotted.setOnClickListener(UserClickListener.forUser(trackable, TextUtils.stripHtml(trackable.getOwner())));
                 }
             }
 

@@ -92,6 +92,7 @@
   <string name="log_posting_twitter">Caricamento tweet…</string>
   <string name="log_posting_gcvote">Caricamento GCVote…</string>
   <string name="log_posting_image">Caricamento immagine…</string>
+  <string name="log_posting_generic_trackable">Sto pubblicando %1$s %2$d/%3$d</string>
   <string name="log_clear">Azzera</string>
   <string name="log_post_not_possible">Download dei dati in corso…\nRiprovare tra alcuni secondi o controllare la connessione a internet.</string>
   <string name="log_post_geocode_missing">Geocode mancante…</string>
@@ -123,10 +124,24 @@
   <string name="log_image_description">Descrizione</string>
   <string name="log_image_scale">Ridimensiona</string>
   <string name="log_password_title">Log Password:</string>
+  <string name="log_report_problem">Segnala un problema:</string>
   <string name="log_hint_log_password">Inserisci la password per il log</string>
   <string name="log_oc_team_comment">Commenti del Team OC</string>
   <string name="log_your_saved_log">I tuoi log salvati</string>
-  <string name="log_empty_logbook">Il logbook di questo cache è vuota.</string>
+  <string name="log_empty_logbook">Il logbook di questo cache è vuoto.</string>
+  <string name="log_problem_none">Nessun problema</string>
+  <string name="log_problem_needs_maintenance_label">Ha bisogno di manutenzione</string>
+  <string name="log_problem_needs_maintenance_text">Questo geocacher ha segnalato che esiste un problema con questo cache.</string>
+  <string name="log_problem_log_full_label">Il logbook è pieno</string>
+  <string name="log_problem_log_full_text">Questo geocacher ha segnalato che il logbook è pieno.</string>
+  <string name="log_problem_damaged_label">Il contenitore è danneggiato</string>
+  <string name="log_problem_damaged_text">Questo geocacher ha segnalato che il contenitore è danneggiato.</string>
+  <string name="log_problem_missing_label">Il cache potrebbe non essere presente</string>
+  <string name="log_problem_missing_text">Questo geocacher ha segnalato che il cache potrebbe essere sparito.</string>
+  <string name="log_problem_other_label">Altro</string>
+  <string name="log_problem_other_text">Questo geocacher ha segnalato che esiste un problema con questo cache.</string>
+  <string name="log_problem_archive_label">Questo cache dovrebbe essere archiviato</string>
+  <string name="log_problem_archive_text">Questo geocacher ha segnalato che il cache dovrebbe essere archiviato. Un recensore volontario della community ha ricevuto una notifica.</string>
   <string-array name="log_image_scales">
     <item>Dimensioni originali</item>
     <item>512 px</item>
@@ -229,6 +244,7 @@
   <string name="warn_rendertheme_missing">Tema mappa non trovato.</string>
   <string name="warn_pocket_query_select">Nessuna Pocket query selezionata.</string>
   <string name="warn_no_pocket_query_found">Nessuna Pocket query trovata online.</string>
+  <string name="warn_invalid_character">Il carattere deve essere una lettera o una cifra</string>
   <string name="err_read_pocket_query_list">Errore nella lettura della lista di Pocket query.</string>
   <string name="info_log_posted">c:geo ha inviato il log con successo.</string>
   <string name="info_log_saved">c:geo ha salvato il log.</string>
@@ -237,15 +253,21 @@
   <string name="info_log_post_retry">Riprova</string>
   <string name="info_log_post_save">Salva offline</string>
   <string name="info_log_cleared">Il log è stato azzerato.</string>
+  <string name="info_waypoint_coordinates_cleared">Coordinate eliminate.</string>
   <string name="info_log_type_changed">Il tipo di log è cambiato!</string>
+  <string name="info_log_report_problem_changed">La lista delle segnalazioni dei problemi è stata aggiornata!</string>
   <string name="info_select_logimage_cancelled">Selezione o cattura immagine annulata.</string>
   <string name="info_stored_image">Nuova immagine salvata su:</string>
   <string name="info_storing_static_maps">Tento di salvare le mappe statiche</string>
   <string name="info_cache_saved">Il cache è stato salvato localmente</string>
+  <string name="warn_calculator_state_save">Assicurarsi di salvare il waypoint se si desidera mantenere lo stato della calcolatrice.</string>
   <string name="err_trackable_log_not_anonymous">Log di %1$s da c:geo non può essere fatto in forma anonima. Si desidera aprire le impostazioni per completare le credenziali da %2$s?</string>
   <string name="err_trackable_no_preference_activity">La pagina di configurazione del servizio associato al trackable non è disponibile.</string>
+  <string name="confirm_unsaved_changes_title">Modifiche non salvate</string>
+  <string name="confirm_discard_wp_changes">Ignorare i waypoint non salvati?</string>
   <string name="warn_discard_changes">Le modifiche non salvate ai waypoint vengono annullate!</string>
   <string name="err_request_popup_info">c:geo non riesce ad ottenere le informazioni popup del cache.</string>
+  <string name="warn_log_load_additional_data">c:geo non riesce a caricare dati aggiuntivi (trackables/punti preferiti) per il logging.</string>
   <!-- location service -->
   <string name="loc_last">Ultima nota</string>
   <string name="loc_net">Network</string>
@@ -287,6 +309,8 @@
     <item quantity="other">%d minuti</item>
   </plurals>
   <string name="caches_store_offline">Salva per Offline</string>
+  <string name="caches_store_all">Archiviare tutto</string>
+  <string name="caches_store_unsaved">Archiviare non salvati</string>
   <string name="caches_store_selected">Salva selezionati</string>
   <string name="caches_history">Cronologia</string>
   <string name="caches_on_map">Visualizza sulla mappa</string>
@@ -314,6 +338,10 @@
   <string name="caches_nearby">Qui vicino</string>
   <string name="caches_manage">Gestisci</string>
   <string name="caches_remove_all">Elimina tutti</string>
+  <plurals name="caches_remove_all_confirm">
+    <item quantity="one">Vuoi rimuovere questo cache da questa lista?</item>
+    <item quantity="other">Vuoi rimuovere tutti i %d cache da questa lista?</item>
+  </plurals>
   <string name="caches_remove_selected">Elimina selezionati</string>
   <plurals name="caches_remove_selected_confirm">
     <item quantity="one">Si desidera rimuovere questo cache dal tuo dispositivo?</item>
@@ -358,6 +386,7 @@
   <string name="caches_make_list_unique">Marca la lista come unica</string>
   <string name="caches_filter_missing_gcvote">Trovati cache non votati</string>
   <!-- caches lists -->
+  <string name="menu_lists">Gestisci liste</string>
   <string name="list_menu_create">Crea nuova lista</string>
   <string name="list_menu_drop">Elimina la lista corrente</string>
   <string name="list_menu_rename">Rinomina la lista corrente</string>
@@ -384,8 +413,8 @@
   <string name="about_version">Versione</string>
   <string name="about_changelog">Modifiche</string>
   <string name="about_system">Sistema</string>
-  <string name="about_donate">Donazioni</string>
-  <string name="about_donation_more">Fai una\nDonazione</string>
+  <string name="about_donate">Sostienici</string>
+  <string name="about_donation_more">Visita il sito web per info</string>
   <string name="about_contributors">Contributori</string>
   <string name="about_license">Licenza</string>
   <string name="about_apache_license"><a href="">Licenza Apache, versione 2.0</a></string>
@@ -417,6 +446,7 @@
   <string name="calculate_dataDir_title">Dati Geocache usati</string>
   <string name="calculate_dataDir">Calcola lo spazio disco usato dai Geocache</string>
   <string name="settings_data_dir_item">%1$s (%2$s liberi)</string>
+  <string name="confirm_data_dir_move_title">Vuoi spostare la directory geocache?</string>
   <string name="confirm_data_dir_move">Lo spostamento dei dati geocache potrebbe richiedere molto tempo, a seconda del dispositivo e la quantità di dati.</string>
   <string name="settings_title_basicmembers">Opzioni per i membri di base (non Premium)</string>
   <string name="settings_title_navigation">Navigazione</string>
@@ -451,12 +481,15 @@
   <string name="settings_activate_oc_pl">Attiva</string>
   <string name="init_summary_oc_pl">Carica cache da opencaching.pl</string>
   <string name="init_oc_pl_description">Autorizza c:geo a cercare cache ed accedere/filtrare i ritrovamenti su opencaching.pl.</string>
+  <string name="init_oc_nl">Opencaching.nl</string>
   <string name="settings_activate_oc_nl">Attiva</string>
   <string name="init_summary_oc_nl">Carica cache da opencaching.nl</string>
   <string name="init_oc_nl_description">Autorizza c:geo a cercare cache ed accedere/filtrare i ritrovamenti su opencaching.nl.</string>
+  <string name="init_oc_us">Opencaching.us</string>
   <string name="settings_activate_oc_us">Attiva</string>
   <string name="init_summary_oc_us">Carica cache da opencaching.us</string>
   <string name="init_oc_us_description">Autorizza c:geo a cercare cache ed accedere/filtrare i ritrovamenti su opencaching.us.</string>
+  <string name="init_oc_ro">Opencaching.ro</string>
   <string name="settings_activate_oc_ro">Attiva</string>
   <string name="init_summary_oc_ro">Carica cache da opencaching.ro</string>
   <string name="init_oc_ro_description">Autorizza c:geo a cercare cache ed accedere/filtrare i ritrovamenti su opencaching.ro.</string>
@@ -498,8 +531,11 @@
   <string name="init_signature_template_number">Numero cache</string>
   <string name="init_signature_template_owner">Proprietario</string>
   <string name="init_signature_template_name">Nome</string>
+  <string name="init_signature_template_difficulty">Difficoltà</string>
+  <string name="init_signature_template_terrain">Terreno</string>
   <string name="init_signature_template_url">URL</string>
   <string name="init_signature_template_log">Testo di Log</string>
+  <string name="init_signature_template_size">Dimensione</string>
   <string name="init_ratingwanted">Rating da GCvote.com</string>
   <string name="init_summary_ratingwanted">Carica il rating del cache da GCvote.com</string>
   <string name="init_friends_and_own_logs_wanted">Visualizza i tuoi/dei tuoi amici</string>
@@ -640,6 +676,9 @@
   <string name="feature_search_geocode">Cerca per geocode</string>
   <string name="feature_search_owner">Cerca per proprietario</string>
   <string name="feature_search_finder">Cerca per ricercatore</string>
+  <string name="init_mapsforge_api_title">API Mapsforge</string>
+  <string name="init_mfold_api">Vecchio Mapsforge V3</string>
+  <string name="init_mfold_api_description">La versione corrente contiene una versione beta della nostra nuova mappa Mapsforge. Se non trovi alcune caratteristiche o riscontri qualche problema puoi tornare indietro alla vecchia versione qui.</string>
   <string name="init_experimental_title">Funzioni sperimentali</string>
   <string name="init_mfbeta">Mapsforge beta come predefinito</string>
   <string name="init_mfbeta_description">La versione corrente contiene una versione beta della nostra mappa Mapsforge come funzione sperimentale. Questa mappa può essere attivata qui come default per il live ed elenco mappe.</string>
@@ -687,6 +726,9 @@
   <!-- auth opencaching -->
   <string name="auth_ocde">opencaching.de</string>
   <string name="auth_ocpl">opencaching.pl</string>
+  <string name="auth_ocnl">opencaching.nl</string>
+  <string name="auth_ocus">opencaching.us</string>
+  <string name="auth_ocro">opencaching.ro</string>
   <string name="auth_ocuk">opencache.uk</string>
   <string name="auth_dialog_completed_oc">c:geo è ora autorizzato ad accedere a %s.</string>
   <!-- auth geokrety -->
@@ -727,6 +769,11 @@
     <item quantity="one">circa %d giorno fa</item>
     <item quantity="other">circa %d giorni fa</item>
   </plurals>
+  <plurals name="cache_offline_about_time_months">
+    <item quantity="one">circa %d mesi fa</item>
+    <item quantity="other">circa %d mesi fa</item>
+  </plurals>
+  <string name="cache_offline_about_time_year">più di un anno fa</string>
   <string name="cache_offline_time_hour">un\'ora fa</string>
   <string name="cache_offline_time_hours">ore fa</string>
   <string name="cache_offline_time_days">giorni fa</string>
@@ -819,6 +866,7 @@
   <string name="cache_menu_spoilers">Immagini spoiler</string>
   <string name="cache_menu_around">Cache qui intorno</string>
   <string name="around">Nei dintorni di %s</string>
+  <string name="menu_caches">Gestisci i cache</string>
   <string name="cache_menu_event">Aggiungi al calendario</string>
   <string name="cache_menu_extract_waypoints">Estrazione dei waypoint</string>
   <string name="cache_menu_details">Dettagli</string>
@@ -831,6 +879,7 @@
   <string name="cache_menu_oruxmaps_offline">OruxMaps (Offline)</string>
   <string name="cache_menu_navigon">Navigon</string>
   <string name="cache_menu_pebble">Pebble</string>
+  <string name="cache_menu_android_wear">Android Wear</string>
   <string name="cache_menu_vote">Vota</string>
   <string name="cache_menu_checker">Open Geochecker</string>
   <string name="cache_menu_challenge_checker">Cerca le sfide (challenge)</string>
@@ -865,6 +914,7 @@
   <string name="cache_event">Data</string>
   <string name="cache_location">Luogo</string>
   <string name="cache_coordinates">Coordinate</string>
+  <string name="cache_calculator">Calcolatrice</string>
   <string name="cache_coordinates_original">Coordinate originali</string>
   <string name="cache_spoiler_images_title">Immagini spoiler</string>
   <string name="cache_log_types">Tipi di Log</string>
@@ -928,6 +978,7 @@
   <string name="waypoint">Waypoint</string>
   <string name="waypoint_coordinates">Coordinate</string>
   <string name="waypoint_cache_coordinates">Coordinate cache</string>
+  <string name="waypoint_calculate_coordinates">Calcola coordinate</string>
   <string name="waypoint_custom">Custom</string>
   <string name="waypoint_my_coordinates">Coordinate attuali</string>
   <string name="waypoint_bearing">Angolo in gradi</string>
@@ -935,6 +986,7 @@
   <string name="waypoint_name">Nome</string>
   <string name="waypoint_edit">Modifica</string>
   <string name="waypoint_copy_coordinates">Copia le coordinate</string>
+  <string name="waypoint_clear_coordinates">Elimina coordinate</string>
   <string name="waypoint_delete">Elimina</string>
   <string name="waypoint_edit_title">Modifica waypoint</string>
   <string name="waypoint_add_title">Aggiungi waypoint</string>
@@ -962,6 +1014,7 @@
   <string name="waypoint_duplicate">Duplica waypoint</string>
   <string name="waypoint_duplicated">Waypoint duplicato</string>
   <string name="waypoint_copy_of">Copia di</string>
+  <string name="waypointcalc_notes_prompt">Inserire le note qui…</string>
   <string name="search_history">Cronologia</string>
   <string name="search_history_empty">Nessuna precedente destinazione</string>
   <string name="search_remove_destination">Destinazione rimossa</string>
@@ -1096,6 +1149,7 @@
   <string name="helper_sendtocgeo_description">Send to c:geo è un\'estensione del browser <strong>per il tuo PC</strong>. Durante la navigazione su geocaching.com, è possibile inviare i cache al vostro smartphone con il clic di un pulsante direttamente all\'interno del browser.</string>
   <string name="helper_locus_title">Locus</string>
   <string name="helper_locus_description">App per la navigazione in esterni per cellulare o tablet. Mostra mappe offline, traccia il tuo percorso, cerca geocache, usa una voce guida e molto altro.</string>
+  <string name="helper_gpsstatus_title">GPS Status &amp; Toolbox</string>
   <string name="helper_gpsstatus_description">Puoi usare il radar di questa applicazione con c:geo. Offre inoltre molte informazioni addizionali legate al GPS.</string>
   <string name="helper_bluetoothgps_title">Bluetooth GPS</string>
   <string name="helper_bluetoothgps_description">Permette di utilizzare un GPS esterno, garantendo maggiore precisione, migliore ricezione e prolungando la durata della batteria del tuo dispositivo.</string>
@@ -1382,7 +1436,7 @@
   <string name="status_geocaching_change" tools:ignore="UnusedResources">Modifiche recenti al sito geocaching hanno disattivato c:geo.\nCi stiamo lavorando, riprova più tardi.</string>
   <string name="status_geocaching_livemap" tools:ignore="UnusedResources">Modifiche recenti al sito geocaching hanno disattivato la mappa live.\nCi stiamo lavorando, riprova più tardi.</string>
   <string name="status_geocaching_maintenance" tools:ignore="UnusedResources">Geocaching.com è sotto manutenzione. \nCi potrebbero essere dei problemi di collegamento.</string>
-  <string name="status_closeout_warning" tools:ignore="UnusedResources">Sembra che tu stia utilizzando una versione di Android precedente alla 4.0. Le future versioni di c:geo potrebbero non supportare il tuo dispositivo.</string>
+  <string name="status_closeout_warning_41" tools:ignore="UnusedResources">Sembra che tu stia utilizzando una versione di Android precedente alla 4.1. Le future versioni di c:geo potrebbero non supportare il tuo dispositivo.</string>
   <!-- text-to-speech for compass view -->
   <string name="tts_service">Bussola parlante</string>
   <string name="tts_start">Start voce</string>
@@ -1427,8 +1481,10 @@
   <string name="cgeo_shortcut">collegamento a c:geo</string>
   <string name="create_shortcut">Crea collegamento</string>
   <string name="send">Invia</string>
-  <string name="confirm_log_title">Tipo di Log non usuale</string>
+  <string name="confirm_log_title">Tipo di log speciale</string>
   <string name="confirm_log_message">Si desidera registrare \'%s\'. Sei sicuro?</string>
+  <string name="confirm_report_problem_title">Segnala un problema</string>
+  <string name="confirm_report_problem_message">Vuoi segnalare \'%s\'. Sei sicuro?</string>
   <!-- Geokrety -->
   <string name="settings_activate_geokrety">Attiva</string>
   <string name="init_geokrety">GeoKrety.org</string>
@@ -1466,6 +1522,10 @@
   <string name="command_rename_list_result">Lista rinominata</string>
   <string name="command_delete_list_result">Lista eliminata</string>
   <string name="command_unique_list_result">Cache eliminati da altri elenchi</string>
+  <plurals name="fav_points_remaining">
+    <item quantity="one">Aggiungi questo cache ai preferiti (%d restanti)</item>
+    <item quantity="other">Aggiungi questo cache ai preferiti (%d restanti)</item>
+  </plurals>
   <!-- distance units -->
   <string name="unit_m">m</string>
   <string name="unit_km">km</string>
@@ -1488,6 +1548,15 @@
     <item quantity="one">%d waypoint estratto</item>
     <item quantity="other">%d waypoint estratti</item>
   </plurals>
+  <string name="link_gc_checker">Il check delle coordinate geocaching.com è disponibile tramite browser</string>
   <!-- calendar adder -->
   <string name="event_fail">Impossibile aggiungere l\'evento al calendario</string>
+  <string name="init_low_disk_space">Sto esaurendo lo spazio su disco</string>
+  <string name="init_low_disk_space_message">La directory dei dati geocache sta esaurendo lo spazio su disco. Questo può causare malfunzionamenti di c:geo. Si prega di liberare spazio.</string>
+  <string name="init_confirm_debug">c:geo è in esecuzione in modalità di debug!</string>
+  <string name="list_confirm_debug_message">La modalità di debug può causare instabilità! Vuoi tornare alla modalità normale?</string>
+  <string name="err_select_logimage_upload_size">Immagine troppo grande, si prega di selezionare una scala inferiore.</string>
+  <string name="err_logimage_caption_required">Una didascalia è richiesta per l\'immagine</string>
+  <string name="waypoint_latitude_null">N/S --° --.---</string>
+  <string name="waypoint_longitude_null">E/O --° --.---</string>
 </resources>

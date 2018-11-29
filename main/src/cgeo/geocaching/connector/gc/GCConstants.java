@@ -4,8 +4,6 @@ import cgeo.geocaching.log.LogType;
 
 import android.support.annotation.NonNull;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -37,7 +35,7 @@ public final class GCConstants {
     // Patterns for parsing the result of a (detailed) search
 
     static final Pattern PATTERN_HINT = Pattern.compile("<div id=\"div_hint\"[^>]*>(.*?)</div>", Pattern.DOTALL);
-    static final Pattern PATTERN_DESC = Pattern.compile("<span id=\"ctl00_ContentBody_LongDescription\">(.*?)</span>\\s*</div>\\s*<p>\\s*</p>\\s*<p id=\"ctl00_ContentBody_hints\">", Pattern.DOTALL);
+    static final Pattern PATTERN_DESC = Pattern.compile("<span id=\"ctl00_ContentBody_LongDescription\">(.*?)</span>\\s*</div>\\s*<p>\\s*</p>\\s*<(p|div) id=\"ctl00_ContentBody", Pattern.DOTALL);
     static final Pattern PATTERN_SHORTDESC = Pattern.compile("<span id=\"ctl00_ContentBody_ShortDescription\">(.*?)</span>\\s*</div>", Pattern.DOTALL);
     static final Pattern PATTERN_GEOCODE = Pattern.compile("class=\"CoordInfoCode\">(GC[0-9A-Z&&[^ILOSU]]+)</span>");
     static final Pattern PATTERN_GUID = Pattern.compile(Pattern.quote("&wid=") + "([0-9a-z\\-]+)" + Pattern.quote("&"));
@@ -45,7 +43,7 @@ public final class GCConstants {
     static final Pattern PATTERN_LATLON = Pattern.compile("<span id=\"uxLatLon\"[^>]*>(.*?)</span>");
     static final Pattern PATTERN_LATLON_ORIG = Pattern.compile("\\{\"isUserDefined\":true[^}]+?\"oldLatLngDisplay\":\"([^\"]+)\"\\}");
     static final Pattern PATTERN_LOCATION = Pattern.compile(Pattern.quote("<span id=\"ctl00_ContentBody_Location\">In ") + "(?:<a href=[^>]*>)?(.*?)<");
-    static final Pattern PATTERN_PERSONALNOTE = Pattern.compile("<span id=\"cache_note\"[^>]*>(.*?)</span>", Pattern.DOTALL);
+    static final Pattern PATTERN_PERSONALNOTE = Pattern.compile("<span id=\"viewCacheNote\"[^>]*>(.*?)</span>", Pattern.DOTALL);
     static final Pattern PATTERN_NAME = Pattern.compile("<span id=\"ctl00_ContentBody_CacheName\">(.*?)</span>");
     static final Pattern PATTERN_DIFFICULTY = Pattern.compile("<span id=\"ctl00_ContentBody_uxLegendScale\"[^>]*>[^<]*<img src=\"[^\"]*/images/stars/stars([0-9_]+)\\.gif\"");
     static final Pattern PATTERN_TERRAIN = Pattern.compile("<span id=\"ctl00_ContentBody_Localize[\\d]+\"[^>]*>[^<]*<img src=\"[^\"]*/images/stars/stars([0-9_]+)\\.gif\"");
@@ -74,6 +72,7 @@ public final class GCConstants {
     static final Pattern PATTERN_RELATED_WEB_PAGE = Pattern.compile("ctl00_ContentBody_uxCacheUrl.*? href=\"(.*?)\">");
     static final Pattern PATTERN_GC_HOSTED_IMAGE = Pattern.compile("^https?://img(?:cdn)?\\.geocaching\\.com/");
     static final Pattern PATTERN_BACKGROUND_IMAGE = Pattern.compile("<body background=\"(.+?)\"");
+    static final String PATTERN_GC_CHECKER = "ctl00_ContentBody_lblSolutionChecker";
 
     // Info box top-right
     public static final Pattern PATTERN_LOGIN_NAME = Pattern.compile("class=\"li-user-info\"[^>]*>.*?<span>(.*?)</span>", Pattern.DOTALL);
@@ -103,6 +102,8 @@ public final class GCConstants {
     /** Two groups ! */
     static final Pattern PATTERN_TRACKABLE_OWNER = Pattern.compile("<a id=\"ctl00_ContentBody_BugDetails_BugOwner\"[^>]+href=\"https?://www.geocaching.com/profile/\\?guid=(.*?)\">(.*?)</a>");
     static final Pattern PATTERN_TRACKABLE_RELEASES = Pattern.compile("<span id=\"ctl00_ContentBody_BugDetails_BugReleaseDate\">([^<]+)<\\/span>[^<]*</dd>");
+    static final Pattern PATTERN_TRACKABLE_FOUND_LOG = Pattern.compile("<span id=\"ctl00_ContentBody_InteractionLogTypeText\"[^>]*>(.*?)!</span>");
+    static final Pattern PATTERN_TRACKABLE_DISPOSITION_LOG = Pattern.compile("<a id=\"ctl00_ContentBody_InteractionLogLink\"[^>]*href=\"/track/log.aspx\\?LUID=([a-z0-9\\-]+)\">[^0-9]+(.*?)</a>");
     static final Pattern PATTERN_TRACKABLE_ORIGIN = Pattern.compile("<span id=\"ctl00_ContentBody_BugDetails_BugOrigin\">([^<]+)<\\/span>[^<]*</dd>");
     /** Two groups ! */
     static final Pattern PATTERN_TRACKABLE_SPOTTEDCACHE = Pattern.compile("<a id=\"ctl00_ContentBody_BugDetails_BugLocation\" title=\"[^\"]*\" href=\"[^\"]*/seek/cache_details.aspx\\?guid=([a-z0-9\\-]+)\">In ([^<]+)</a>");
@@ -122,7 +123,7 @@ public final class GCConstants {
 
     // Patterns for parsing the result of a search (next)
 
-    static final Pattern PATTERN_SEARCH_TYPE = Pattern.compile("<img src=\"[^\"]*/images/wpttypes/(.*?)\\.");
+    static final Pattern PATTERN_SEARCH_TYPE = Pattern.compile("<img src=\"[^\"]*/images/WptTypes/(.*?)\\.", Pattern.CASE_INSENSITIVE);
     static final Pattern PATTERN_SEARCH_GUIDANDDISABLED = Pattern.compile("SearchResultsWptType.*?<a href=\"[^\"]*\" class=\"lnk ([^\"]*)\"><span>([^<]*)</span>[^|]*[|][^|]*[|]([^<]*)<");
     /** Two groups **/
     static final Pattern PATTERN_SEARCH_TRACKABLES = Pattern.compile("<a id=\"ctl00_ContentBody_dlResults_ctl[0-9]+_uxTravelBugList\" class=\"tblist\" data-tbcount=\"([0-9]+)\" data-id=\"[^\"]*\"[^>]*>(.*)</a>");
@@ -139,7 +140,7 @@ public final class GCConstants {
 
     // Patterns for waypoints
 
-    static final Pattern PATTERN_WPTYPE = Pattern.compile("\\/wpttypes\\/sm\\/(.+)\\.jpg");
+    static final Pattern PATTERN_WPTYPE = Pattern.compile("\\/WptTypes\\/sm\\/(.+)\\.jpg", Pattern.CASE_INSENSITIVE);
     static final Pattern PATTERN_WPPREFIXORLOOKUPORLATLON = Pattern.compile(">([^<]*<[^>]+>)?([^<]+)(<[^>]+>[^<]*)?<\\/td>");
     static final Pattern PATTERN_WPNAME = Pattern.compile(">[^<]*<a[^>]+>([^<]*)<\\/a>");
     static final Pattern PATTERN_WPNOTE = Pattern.compile("colspan=\"6\">(.*)" + Pattern.quote("</td>"), Pattern.DOTALL);
@@ -151,16 +152,10 @@ public final class GCConstants {
     static final Pattern PATTERN_TYPEBOX = Pattern.compile("<select name=\"ctl00\\$ContentBody\\$LogBookPanel1\\$ddLogType\" id=\"ctl00_ContentBody_LogBookPanel1_ddLogType\"[^>]*>"
             + "(([^<]*<option[^>]*>[^<]+</option>)+)[^<]*</select>", Pattern.CASE_INSENSITIVE);
     static final Pattern PATTERN_TYPE2 = Pattern.compile("<option( selected=\"selected\")? value=\"(\\d+)\">[^<]+</option>", Pattern.CASE_INSENSITIVE);
-    // FIXME: pattern is over specified
-    static final Pattern PATTERN_TRACKABLE = Pattern.compile("<tr id=\"ctl00_ContentBody_LogBookPanel1_uxTrackables_repTravelBugs_ctl[0-9]+_row\"[^>]*>"
-            + "[^<]*<td>[^<]*<a href=\"[^\"]+\">([A-Z0-9]+)</a>[^<]*</td>[^<]*<td>(.*?)</td>[^<]*<td>"
-            + "[^<]*<select name=\"ctl00\\$ContentBody\\$LogBookPanel1\\$uxTrackables\\$repTravelBugs\\$ctl([0-9]+)\\$ddlAction\"[^>]*>"
-            + "([^<]*<option value=\"([0-9]+)(_[a-z]+)?\">[^<]+</option>)+"
-            + "[^<]*</select>[^<]*</td>[^<]*</tr>", Pattern.CASE_INSENSITIVE);
+    // new logpage logtype pattern:         logSettings.logTypes.push({"Value":46,"Description":"Owner maintenance","IsRealtimeOnly":false});
+    static final Pattern PATTERN_TYPE3 = Pattern.compile("logSettings.logTypes.push\\(([^;]*)\\);");
     static final Pattern PATTERN_MAINTENANCE = Pattern.compile("<span id=\"ctl00_ContentBody_LogBookPanel1_lbConfirm\"[^>]*>([^<]*<font[^>]*>)?([^<]+)(</font>[^<]*)?</span>", Pattern.CASE_INSENSITIVE);
-    static final Pattern PATTERN_OK1 = Pattern.compile("<h2[^>]*>[^<]*<span id=\"ctl00_ContentBody_lbHeading\"[^>]*>[^<]*</span>[^<]*</h2>", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
     static final Pattern PATTERN_OK2 = Pattern.compile("<div id=[\"|']ctl00_ContentBody_LogBookPanel1_ViewLogPanel[\"|'] class=", Pattern.CASE_INSENSITIVE);
-    static final Pattern PATTERN_IMAGE_UPLOAD_URL = Pattern.compile("title=\"Click&#32;for&#32;Larger&#32;Image\"\\s*src=\"(.*?)\"", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
     static final Pattern PATTERN_VIEWSTATEFIELDCOUNT = Pattern.compile("id=\"__VIEWSTATEFIELDCOUNT\"[^(value)]+value=\"(\\d+)\"[^>]+>", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
     static final Pattern PATTERN_VIEWSTATES = Pattern.compile("id=\"__VIEWSTATE(\\d*)\"[^(value)]+value=\"([^\"]+)\"[^>]+>", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
     static final Pattern PATTERN_USERTOKEN = Pattern.compile("userToken\\s*=\\s*'([^']+)'");
@@ -172,18 +167,14 @@ public final class GCConstants {
     static final Pattern PATTERN_USERSESSION = Pattern.compile("UserSession\\('([^']+)'");
     static final Pattern PATTERN_SESSIONTOKEN = Pattern.compile("sessionToken:'([^']+)'");
 
-    static final Pattern PATTERN_LOG_GUID = Pattern.compile("<a id=\"ctl00_ContentBody_LogBookPanel1_WaypointLink\"[^>]* href=\"https?://www\\.geocaching\\.com/seek/cache_details\\.aspx\\?guid=([0-9a-f-]+)\"");
-    static final Pattern PATTERN_LOG_IMAGE_UPLOAD = Pattern.compile("/seek/upload\\.aspx\\?LID=(\\d+)", Pattern.CASE_INSENSITIVE);
-    static final Pattern PATTERN_LOG_FAVORITE_POINTS = Pattern.compile("chkAddToFavorites[\"']>.*\\((\\d+).*\\)<\\/label");
-
     static final String STRING_PREMIUMONLY_2 = "Sorry, the owner of this listing has made it viewable to Premium Members only.";
     static final String STRING_PREMIUMONLY_1 = "has marked it as Premium-Only.";
     static final String STRING_UNPUBLISHED_OTHER = "you cannot view this cache listing until it has been published";
     static final String STRING_UNPUBLISHED_FROM_SEARCH = "class=\"UnpublishedCacheSearchWidget"; // do not include closing brace as the CSS can contain additional styles
     static final String STRING_UNKNOWN_ERROR = "An Error Has Occurred";
-    static final Pattern PATTERN_STATUS = Pattern.compile(Pattern.quote("<p class=\"OldWarning") + "(.*?)<div");
-    static final List<String> STATUS_DISABLED = Arrays.asList("This cache is temporarily unavailable", "Das Listing zu diesem Geocache ist momentan deaktiviert");
-    static final List<String> STATUS_ARCHIVED = Arrays.asList("This cache has been archived", "Dieser Geocache wurde archiviert");
+    static final String STRING_STATUS_DISABLED = "<div id=\"ctl00_ContentBody_uxDisabledMessageBody\"";
+    static final String STRING_STATUS_ARCHIVED = "<div id=\"ctl00_ContentBody_archivedMessage\"";
+    static final String STRING_STATUS_LOCKED = "<div id=\"ctl00_ContentBody_lockedMessage\"";
     static final String STRING_CACHEDETAILS = "id=\"cacheDetails\"";
 
     // Pages with such title seem to be returned with a 200 code instead of 404

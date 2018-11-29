@@ -1,6 +1,8 @@
 package cgeo.geocaching.connector;
 
+import cgeo.geocaching.log.ReportProblemType;
 import cgeo.geocaching.log.TrackableLog;
+import cgeo.geocaching.models.Geocache;
 
 import android.support.annotation.NonNull;
 
@@ -15,6 +17,16 @@ public abstract class AbstractLoggingManager implements ILoggingManager {
     }
 
     @Override
+    public boolean hasTrackableLoadError() {
+        return false;
+    }
+
+    @Override
+    public boolean hasFavPointLoadError() {
+        return false;
+    }
+
+    @Override
     @NonNull
     public List<TrackableLog> getTrackables() {
         return Collections.emptyList();
@@ -24,4 +36,21 @@ public abstract class AbstractLoggingManager implements ILoggingManager {
     public int getPremFavoritePoints() {
         return 0;
     }
+
+    @Override
+    public Long getMaxImageUploadSize() {
+        return null;
+    }
+
+    @Override
+    public boolean isImageCaptionMandatory() {
+        return false;
+    }
+
+    @Override
+    @NonNull
+    public List<ReportProblemType> getReportProblemTypes(@NonNull final Geocache geocache) {
+        return Collections.emptyList();
+    }
+
 }

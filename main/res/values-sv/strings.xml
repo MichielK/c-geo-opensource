@@ -124,10 +124,24 @@
   <string name="log_image_description">Beskrivning</string>
   <string name="log_image_scale">Skalning</string>
   <string name="log_password_title">Logglösenord:</string>
+  <string name="log_report_problem">Rapportera problem:</string>
   <string name="log_hint_log_password">Ange ditt lösenord för loggning</string>
   <string name="log_oc_team_comment">Meddelande från OC Team</string>
   <string name="log_your_saved_log">Din sparade logg</string>
   <string name="log_empty_logbook">Cachens loggbok är tom.</string>
+  <string name="log_problem_none">Inga problem</string>
+  <string name="log_problem_needs_maintenance_label">Behöver underhåll</string>
+  <string name="log_problem_needs_maintenance_text">Denna geocacharen rapporterade att det finns ett problem med denna cache.</string>
+  <string name="log_problem_log_full_label">Loggboken är full</string>
+  <string name="log_problem_log_full_text">Denna geocacharen rapporterade att loggboken är full.</string>
+  <string name="log_problem_damaged_label">Behållaren är skadad</string>
+  <string name="log_problem_damaged_text">Denna geocacharen rapporterade att behållaren är skadad.</string>
+  <string name="log_problem_missing_label">Cachen är kanske borta</string>
+  <string name="log_problem_missing_text">Denna geocacharen rapporterade att cachen kanske är borta.</string>
+  <string name="log_problem_other_label">Annat</string>
+  <string name="log_problem_other_text">Denna geocacharen rapporterade att det finns ett problem med cachen.</string>
+  <string name="log_problem_archive_label">Cachen bör arkiveras</string>
+  <string name="log_problem_archive_text">Denna geocacharen rapporterade att denna geocache bör arkiveras. En reviewer har blivit informerad.</string>
   <string-array name="log_image_scales">
     <item>Ingen skalning</item>
     <item>512 px</item>
@@ -230,6 +244,7 @@
   <string name="warn_rendertheme_missing">Karttema kunde inte hittas.</string>
   <string name="warn_pocket_query_select">Ingen Pocket query vald.</string>
   <string name="warn_no_pocket_query_found">Ingen Pocket query hittades på nätet.</string>
+  <string name="warn_invalid_character">Tecknet måste vara en bokstav eller en siffra</string>
   <string name="err_read_pocket_query_list">Fel vid inläsning av Pocket Query-lista.</string>
   <string name="info_log_posted">c:geo har postat din logg.</string>
   <string name="info_log_saved">c:geo har sparat din logg.</string>
@@ -238,15 +253,21 @@
   <string name="info_log_post_retry">Försök igen</string>
   <string name="info_log_post_save">Spara offline</string>
   <string name="info_log_cleared">Loggen har rensats.</string>
+  <string name="info_waypoint_coordinates_cleared">Koordinater rensade.</string>
   <string name="info_log_type_changed">Typen av logg har ändrats!</string>
+  <string name="info_log_report_problem_changed">Tillgängliga problemrapporter har förändrats!</string>
   <string name="info_select_logimage_cancelled">Val av bild avbröts.</string>
   <string name="info_stored_image">Ny bild sparad som:</string>
   <string name="info_storing_static_maps">Försöker ladda ner statiska kartor</string>
   <string name="info_cache_saved">Cachen har lagrats lokalt</string>
+  <string name="warn_calculator_state_save">Glöm inte att spara punkten om du vill behålla kalkylatorläget.</string>
   <string name="err_trackable_log_not_anonymous">Loggning av %1$s från c:geo kan inte göras anonymt. Vill du öppna inställningarna för att fylla i din inloggningsinformation från %2$s?</string>
   <string name="err_trackable_no_preference_activity">Tyvärr kan inte en lämplig inställningsskärm hittas.</string>
+  <string name="confirm_unsaved_changes_title">Osparade ändringar</string>
+  <string name="confirm_discard_wp_changes">Ignorera osparade ändringar för punkten?</string>
   <string name="warn_discard_changes">Ej sparade ändringar av punkt slängdes!</string>
   <string name="err_request_popup_info">c:geo kunde inte hämta cachens popup-info.</string>
+  <string name="warn_log_load_additional_data">c:geo misslyckades med att hämta ytterligare data (trackables/favorit poäng) för loggning.</string>
   <!-- location service -->
   <string name="loc_last">Senast kända</string>
   <string name="loc_net">Nätverk</string>
@@ -288,6 +309,8 @@
     <item quantity="other">%d minuter</item>
   </plurals>
   <string name="caches_store_offline">Spara för Offline</string>
+  <string name="caches_store_all">Spara alla</string>
+  <string name="caches_store_unsaved">Spara osparade</string>
   <string name="caches_store_selected">Spara valda</string>
   <string name="caches_history">Senast hittade cacher</string>
   <string name="caches_on_map">Visa på karta</string>
@@ -315,6 +338,10 @@
   <string name="caches_nearby">Nära</string>
   <string name="caches_manage">Hantera</string>
   <string name="caches_remove_all">Ta bort alla</string>
+  <plurals name="caches_remove_all_confirm">
+    <item quantity="one">Vill du ta bort denna cache från aktuell lista?</item>
+    <item quantity="other">Vill du ta bort alla %d cacher från aktuell lista?</item>
+  </plurals>
   <string name="caches_remove_selected">Ta bort valda</string>
   <plurals name="caches_remove_selected_confirm">
     <item quantity="one">Vill du radera den här cachen från din enhet?</item>
@@ -386,8 +413,8 @@
   <string name="about_version">Version</string>
   <string name="about_changelog">Historik</string>
   <string name="about_system">System</string>
-  <string name="about_donate">Stöd c:geo</string>
-  <string name="about_donation_more">Donera till\nutveckling</string>
+  <string name="about_donate">Stöd oss</string>
+  <string name="about_donation_more">Besök hemsidan för info</string>
   <string name="about_contributors">Medarbetare</string>
   <string name="about_license">Licens</string>
   <string name="about_apache_license"><a href="">Apache License, Version 2.0</a></string>
@@ -419,6 +446,7 @@
   <string name="calculate_dataDir_title">Användning av geocache-data katalog</string>
   <string name="calculate_dataDir">Beräknar användning i katalog för Geocache data</string>
   <string name="settings_data_dir_item">%1$s (%2$s ledigt)</string>
+  <string name="confirm_data_dir_move_title">Flytta datakatalog för geocacher?</string>
   <string name="confirm_data_dir_move">Att flytta katalogen för geocache-data kan, beroende på din enhet och mängden data, ta riktigt lång tid.</string>
   <string name="settings_title_basicmembers">Inställningar för Basic Members</string>
   <string name="settings_title_navigation">Navigering</string>
@@ -503,8 +531,11 @@
   <string name="init_signature_template_number">Nummer</string>
   <string name="init_signature_template_owner">Ägare</string>
   <string name="init_signature_template_name">Namn</string>
+  <string name="init_signature_template_difficulty">Svårighet</string>
+  <string name="init_signature_template_terrain">Terräng</string>
   <string name="init_signature_template_url">URL</string>
   <string name="init_signature_template_log">Loggtext</string>
+  <string name="init_signature_template_size">Storlek</string>
   <string name="init_ratingwanted">GCvote.com</string>
   <string name="init_summary_ratingwanted">Ladda cache betyg från GCvote.com</string>
   <string name="init_friends_and_own_logs_wanted">Visa vänners/egna</string>
@@ -645,6 +676,9 @@
   <string name="feature_search_geocode">Sök med geo-kod</string>
   <string name="feature_search_owner">Sök baserat på ägare</string>
   <string name="feature_search_finder">Sök baserat på hittare</string>
+  <string name="init_mapsforge_api_title">Mapsforge API</string>
+  <string name="init_mfold_api">Gamla Mapsforge V3</string>
+  <string name="init_mfold_api_description">Den nuvarande versionen innehåller en betaversion av nya Mapsforge kartor. Om du saknar några funktioner eller får problem kan du gå tillbaka till den gamla versionen här.</string>
   <string name="init_experimental_title">Experimentella funktioner</string>
   <string name="init_mfbeta">Mapsforge beta som standard</string>
   <string name="init_mfbeta_description">Den nuvarande versionen innehåller en betaversion av vår nya Mapforge-karta som en experimentell funktion. Denna karta kan aktiveras här som standard för live- och listkartan.</string>
@@ -669,7 +703,7 @@
   <string name="auth_authorize">Koppla c:geo mot Twitter</string>
   <string name="auth_check">Kolla autentisering</string>
   <string name="auth_check_again">Kolla autentisering igen</string>
-  <string name="auth_start">Kolla autentisering</string>
+  <string name="auth_start">Påbörja koppling mot Twitter</string>
   <string name="auth_again">Koppla mot Twitter igen</string>
   <string name="auth_register">Skapa ett konto</string>
   <string name="auth_connected">Ansluten</string>
@@ -735,6 +769,11 @@
     <item quantity="one">för ca %d dag sedan</item>
     <item quantity="other">för ca %d dagar sedan</item>
   </plurals>
+  <plurals name="cache_offline_about_time_months">
+    <item quantity="one">ungefär %d månad sedan</item>
+    <item quantity="other">ungefär %d månader sedan</item>
+  </plurals>
+  <string name="cache_offline_about_time_year">över ett år sedan</string>
   <string name="cache_offline_time_hour">en timme sedan</string>
   <string name="cache_offline_time_hours">timmar sedan</string>
   <string name="cache_offline_time_days">dagar sedan</string>
@@ -875,6 +914,7 @@
   <string name="cache_event">Datum</string>
   <string name="cache_location">Plats</string>
   <string name="cache_coordinates">Koordinater</string>
+  <string name="cache_calculator">Kalkylator</string>
   <string name="cache_coordinates_original">Ursprungliga koordinater</string>
   <string name="cache_spoiler_images_title">Spoiler bilder</string>
   <string name="cache_log_types">Loggtyper</string>
@@ -938,6 +978,7 @@
   <string name="waypoint">Punkt</string>
   <string name="waypoint_coordinates">Koordinater</string>
   <string name="waypoint_cache_coordinates">Cache koordinater</string>
+  <string name="waypoint_calculate_coordinates">Koordinatkalkylator</string>
   <string name="waypoint_custom">Egen</string>
   <string name="waypoint_my_coordinates">Mina koordinater</string>
   <string name="waypoint_bearing">Riktning (°)</string>
@@ -945,6 +986,7 @@
   <string name="waypoint_name">Namn</string>
   <string name="waypoint_edit">Redigera</string>
   <string name="waypoint_copy_coordinates">Kopiera koordinater</string>
+  <string name="waypoint_clear_coordinates">Rensa koordinater</string>
   <string name="waypoint_delete">Ta bort</string>
   <string name="waypoint_edit_title">Redigera punkt</string>
   <string name="waypoint_add_title">Lägg till punkt</string>
@@ -972,6 +1014,7 @@
   <string name="waypoint_duplicate">Duplicera punkt</string>
   <string name="waypoint_duplicated">Punkten har duplicerats</string>
   <string name="waypoint_copy_of">Kopia av</string>
+  <string name="waypointcalc_notes_prompt">Skriv anteckningar här…</string>
   <string name="search_history">Historik</string>
   <string name="search_history_empty">Inga tidigare målpunkter</string>
   <string name="search_remove_destination">Punkten borttagen</string>
@@ -1393,7 +1436,7 @@
   <string name="status_geocaching_change" tools:ignore="UnusedResources">Ändringar som gjorts på geocaching.com har gjort så att c:geo inte fungerar.\nVi jobbar för att lösa problemen, försök igen om en stund.</string>
   <string name="status_geocaching_livemap" tools:ignore="UnusedResources">Ändringar som gjorts på geocaching.com har gjort så att Live kartan inte fungerar.\nVi jobbar för att lösa problemen, försök igen om en stund.</string>
   <string name="status_geocaching_maintenance" tools:ignore="UnusedResources">geocaching.com utför underhåll.\nDu kan råka ut för olika problem.</string>
-  <string name="status_closeout_warning" tools:ignore="UnusedResources">Du verkar använda en version av Android som är äldre än 4.0. Framtida versioner av c:geo kommer kanske inte vara tillgänglig för din enhet.</string>
+  <string name="status_closeout_warning_41" tools:ignore="UnusedResources">Du verkar använda en Android version som är äldre än 4.1. Framtida versioner av c:geo kommer troligtvis inte fungera på din telefon.</string>
   <!-- text-to-speech for compass view -->
   <string name="tts_service">Talande kompass</string>
   <string name="tts_start">Starta tal</string>
@@ -1438,8 +1481,10 @@
   <string name="cgeo_shortcut">c:geo genväg</string>
   <string name="create_shortcut">Skapa genväg</string>
   <string name="send">Skicka</string>
-  <string name="confirm_log_title">Ovanlig loggtyp</string>
+  <string name="confirm_log_title">Särskild logtyp</string>
   <string name="confirm_log_message">Du vill logga \'%s\'. Är du säker?</string>
+  <string name="confirm_report_problem_title">Rapportera problem</string>
+  <string name="confirm_report_problem_message">Du vill rapportera \'%s\'. Är du säker?</string>
   <!-- Geokrety -->
   <string name="settings_activate_geokrety">Aktivera</string>
   <string name="init_geokrety">GeoKrety.org</string>
@@ -1477,6 +1522,10 @@
   <string name="command_rename_list_result">Namn ändrat på lista</string>
   <string name="command_delete_list_result">Lista borttagen</string>
   <string name="command_unique_list_result">Borttagna cacher från andra listor</string>
+  <plurals name="fav_points_remaining">
+    <item quantity="one">Lägg till cachen bland dina favoriter (%d kvar)</item>
+    <item quantity="other">Lägg till cachen bland dina favoriter (%d kvar)</item>
+  </plurals>
   <!-- distance units -->
   <string name="unit_m">m</string>
   <string name="unit_km">km</string>
@@ -1499,7 +1548,15 @@
     <item quantity="one">%d punkt har extraherats</item>
     <item quantity="other">%d punkter har extraherats</item>
   </plurals>
+  <string name="link_gc_checker">geocaching.com koordinat kontroll är tillgänglig via webbläsare</string>
   <!-- calendar adder -->
   <string name="event_fail">Det gick inte att lägga till event cache i kalender</string>
+  <string name="init_low_disk_space">Snart slut på diskutrymme</string>
+  <string name="init_low_disk_space_message">Katalogen för geocachedata håller på att få slut på utrymme. Detta kan orsaka problem med c:geo. Vänligen försök frigöra lite utrymme.</string>
   <string name="init_confirm_debug">c:geo körs i debugläge!</string>
+  <string name="list_confirm_debug_message">Debug-läge kan orsaka instabilitet! Vill du återgå till normalläge?</string>
+  <string name="err_select_logimage_upload_size">Bilden är för stor, vänligen välj en mindre skala.</string>
+  <string name="err_logimage_caption_required">En text krävs till bilden</string>
+  <string name="waypoint_latitude_null">N/S --° --.---</string>
+  <string name="waypoint_longitude_null">E/W --° --.---</string>
 </resources>

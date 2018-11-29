@@ -8,6 +8,7 @@ import cgeo.geocaching.apps.cachelist.MapsMeCacheListApp;
 import cgeo.geocaching.apps.navi.NavigationAppFactory;
 import cgeo.geocaching.apps.navi.NavigationSelectionActionProvider;
 import cgeo.geocaching.calendar.CalendarAdder;
+import cgeo.geocaching.command.AbstractCommand;
 import cgeo.geocaching.command.MoveToListAndRemoveFromOthersCommand;
 import cgeo.geocaching.compatibility.Compatibility;
 import cgeo.geocaching.connector.ConnectorFactory;
@@ -59,12 +60,13 @@ import cgeo.geocaching.ui.EditNoteDialog.EditNoteDialogListener;
 import cgeo.geocaching.ui.ImagesList;
 import cgeo.geocaching.ui.IndexOutOfBoundsAvoidingTextView;
 import cgeo.geocaching.ui.NavigationActionProvider;
-import cgeo.geocaching.ui.OwnerActionsClickListener;
 import cgeo.geocaching.ui.TrackableListAdapter;
+import cgeo.geocaching.ui.UserClickListener;
 import cgeo.geocaching.ui.WeakReferenceHandler;
 import cgeo.geocaching.ui.dialog.Dialogs;
 import cgeo.geocaching.ui.recyclerview.RecyclerViewProvider;
 import cgeo.geocaching.utils.AndroidRxUtils;
+import cgeo.geocaching.utils.CalendarUtils;
 import cgeo.geocaching.utils.CheckerUtils;
 import cgeo.geocaching.utils.ClipboardUtils;
 import cgeo.geocaching.utils.CryptUtils;
@@ -109,8 +111,12 @@ import android.text.Editable;
 import android.text.Html;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.text.style.StyleSpan;
+import android.text.style.URLSpan;
 import android.text.util.Linkify;
 import android.util.TypedValue;
 import android.view.ContextMenu;
@@ -137,7 +143,6 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -170,14 +175,21 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
 
     private static final int MESSAGE_FAILED = -1;
     private static final int MESSAGE_SUCCEEDED = 1;
+    private static final String COLOR_END = "[;\"]";
 
     private static final Pattern[] DARK_COLOR_PATTERNS = {
+            // html attributes
             Pattern.compile("((?<!bg)color)=\"#" + "(0[0-9]){3}" + "\"", Pattern.CASE_INSENSITIVE),
             Pattern.compile("((?<!bg)color)=\"" + "black" + "\"", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("((?<!bg)color)=\"#" + "000080" + "\"", Pattern.CASE_INSENSITIVE) };
+            Pattern.compile("((?<!bg)color)=\"#" + "000080" + "\"", Pattern.CASE_INSENSITIVE),
+            // styles
+            Pattern.compile("((?<!background-)color):#" + "(0[0-9]){3}" + COLOR_END, Pattern.CASE_INSENSITIVE), Pattern.compile("((?<!background-)color):" + "black" + COLOR_END, Pattern.CASE_INSENSITIVE), Pattern.compile("((?<!background-)color):#" + "000080" + COLOR_END, Pattern.CASE_INSENSITIVE) };
     private static final Pattern[] LIGHT_COLOR_PATTERNS = {
+            // html attributes
             Pattern.compile("((?<!bg)color)=\"#" + "([F][6-9A-F]){3}" + "\"", Pattern.CASE_INSENSITIVE),
-            Pattern.compile("((?<!bg)color)=\"" + "white" + "\"", Pattern.CASE_INSENSITIVE) };
+            Pattern.compile("((?<!bg)color)=\"" + "white" + "\"", Pattern.CASE_INSENSITIVE),
+            // styles
+            Pattern.compile("((?<!background-)color):#" + "([F][6-9A-F]){3}" + COLOR_END, Pattern.CASE_INSENSITIVE), Pattern.compile("((?<!background-)color):" + "white" + COLOR_END, Pattern.CASE_INSENSITIVE) };
     public static final String STATE_PAGE_INDEX = "cgeo.geocaching.pageIndex";
 
     // Store Geocode here, as 'cache' is loaded Async.
@@ -452,6 +464,8 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                 menu.findItem(R.id.menu_waypoint_navigate).setVisible(hasCoords);
                 menu.findItem(R.id.menu_waypoint_caches_around).setVisible(hasCoords);
                 menu.findItem(R.id.menu_waypoint_copy_coordinates).setVisible(hasCoords);
+                final boolean canClearCoords = hasCoords && (selectedWaypoint.isUserDefined() || selectedWaypoint.isOriginalCoordsEmpty());
+                menu.findItem(R.id.menu_waypoint_clear_coordinates).setVisible(canClearCoords);
                 break;
             default:
                 if (imagesList != null) {
@@ -500,6 +514,12 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                                 GeopointFormatter.reformatForClipboard(coordinates.toString()));
                         showToast(getString(R.string.clipboard_copy_ok));
                     }
+                }
+                return true;
+            case R.id.menu_waypoint_clear_coordinates:
+                if (selectedWaypoint != null) {
+                    ensureSaved();
+                    new ClearCoordinatesCommand(this, cache, selectedWaypoint).execute();
                 }
                 return true;
             case R.id.menu_waypoint_duplicate:
@@ -582,6 +602,54 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
         return onOptionsItemSelected(item);
     }
 
+    private abstract static class AbstractWaypointModificationCommand extends AbstractCommand {
+        protected final Waypoint waypoint;
+        protected final Geocache cache;
+
+        protected AbstractWaypointModificationCommand(final CacheDetailActivity context, final Geocache cache, final Waypoint waypoint) {
+            super(context);
+            this.cache = cache;
+            this.waypoint = waypoint;
+        }
+
+        @Override
+        protected void onFinished() {
+            ((CacheDetailActivity) getContext()).notifyDataSetChanged();
+        }
+
+        @Override
+        protected void onFinishedUndo() {
+            ((CacheDetailActivity) getContext()).notifyDataSetChanged();
+        }
+    }
+
+    private static final class ClearCoordinatesCommand extends AbstractWaypointModificationCommand {
+
+        private Geopoint coords;
+
+        ClearCoordinatesCommand(final CacheDetailActivity context, final Geocache cache, final Waypoint waypoint) {
+            super(context, cache, waypoint);
+        }
+
+        @Override
+        protected void doCommand() {
+            coords = waypoint.getCoords();
+            waypoint.setCoords(null);
+            DataStore.saveCache(cache, EnumSet.of(SaveFlag.DB));
+        }
+
+        @Override
+        protected void undoCommand() {
+            waypoint.setCoords(coords);
+            DataStore.saveCache(cache, EnumSet.of(SaveFlag.DB));
+        }
+
+        @Override
+        protected String getResultMessage() {
+            return getContext().getString(R.string.info_waypoint_coordinates_cleared);
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(final Menu menu) {
         CacheMenuHandler.addMenuItems(this, menu, cache);
@@ -650,7 +718,8 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                 ignoreCache();
                 return true;
             case R.id.menu_extract_waypoints:
-                extractWaypoints(cache.getDescription(), cache);
+                final String searchText = cache.getShortDescription() + ' ' + cache.getDescription();
+                extractWaypoints(searchText, cache);
                 return true;
             case R.id.menu_export_gpx:
                 new GpxExport().export(Collections.singletonList(cache), this);
@@ -1070,13 +1139,22 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                 } else { // OwnerReal guaranteed to be not blank based on above
                     ownerView.setText(cache.getOwnerUserId(), TextView.BufferType.SPANNABLE);
                 }
-                ownerView.setOnClickListener(new OwnerActionsClickListener(cache));
+                ownerView.setOnClickListener(UserClickListener.forOwnerOf(cache));
             }
 
             // hidden or event date
             final TextView hiddenView = details.addHiddenDate(cache);
             if (hiddenView != null) {
                 addContextMenu(hiddenView);
+                if (cache.isEventCache()) {
+                    hiddenView.setOnClickListener(new OnClickListener() {
+
+                        @Override
+                        public void onClick(final View v) {
+                            CalendarUtils.openCalendar(CacheDetailActivity.this, cache.getHiddenDate());
+                        }
+                    });
+                }
             }
 
             // cache location
@@ -1653,6 +1731,8 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                         // remove the formatting by converting to a simple string
                         descriptionView.append(description.toString());
                     }
+
+                    fixRelativeLinks(descriptionView);
                     descriptionView.setMovementMethod(AnchorAwareLinkMovementMethod.getInstance());
                     fixTextColor(descriptionString, descriptionView);
                     descriptionView.setVisibility(View.VISIBLE);
@@ -1664,6 +1744,23 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                 }
             } catch (final RuntimeException ignored) {
                 showToast(res.getString(R.string.err_load_descr_failed));
+            }
+        }
+
+        private void fixRelativeLinks(final TextView descriptionView) {
+            final String baseUrl = ConnectorFactory.getConnector(cache).getHostUrl() + "/";
+            final Spannable spannable = (Spannable) descriptionView.getText();
+            final URLSpan[] spans = spannable.getSpans(0, spannable.length(), URLSpan.class);
+            for (final URLSpan span : spans) {
+                final Uri uri = Uri.parse(span.getURL());
+                if (uri.getScheme() == null && uri.getHost() == null) {
+                    final int start = spannable.getSpanStart(span);
+                    final int end = spannable.getSpanEnd(span);
+                    final int flags = spannable.getSpanFlags(span);
+                    final Uri absoluteUri = Uri.parse(baseUrl + uri.toString());
+                    spannable.removeSpan(span);
+                    spannable.setSpan(new URLSpan(absoluteUri.toString()), start, end, flags);
+                }
             }
         }
 
@@ -1860,11 +1957,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
             if (StringUtils.isNotBlank(wpt.getUserNote()) && !StringUtils.equals(wpt.getNote(), wpt.getUserNote())) {
                 userNoteView.setOnClickListener(new DecryptTextClickListener(userNoteView));
                 userNoteView.setVisibility(View.VISIBLE);
-                if (TextUtils.containsHtml(wpt.getUserNote())) {
-                    userNoteView.setText(Html.fromHtml(wpt.getUserNote(), new SmileyImage(cache.getGeocode(), userNoteView), new UnknownTagsHandler()), TextView.BufferType.SPANNABLE);
-                } else {
-                    userNoteView.setText(wpt.getUserNote());
-                }
+                userNoteView.setText(wpt.getUserNote());
             } else {
                 userNoteView.setVisibility(View.GONE);
             }
@@ -2191,7 +2284,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
                     cache.setCoords(wpt.getCoords());
                     cache.setUserModifiedCoords(false);
                     cache.deleteWaypointForce(wpt);
-                    DataStore.saveChangedCache(cache);
+                    DataStore.saveUserModifiedCoords(cache);
                     handler.sendEmptyMessage(HandlerResetCoordinates.LOCAL);
                 }
 
@@ -2312,20 +2405,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
         offlineRefresh.setOnClickListener(refreshCacheClickListener);
 
         if (cache.isOffline()) {
-            final long diff = (System.currentTimeMillis() / (60 * 1000)) - (cache.getUpdated() / (60 * 1000)); // minutes
-
-            final String ago;
-            if (diff < 15) {
-                ago = res.getString(R.string.cache_offline_time_mins_few);
-            } else if (diff < 50) {
-                ago = res.getQuantityString(R.plurals.cache_offline_about_time_mins, (int) diff, (int) diff);
-            } else if (diff < (48 * 60)) {
-                ago = res.getQuantityString(R.plurals.cache_offline_about_time_hours, (int) (diff / 60), (int) (diff / 60));
-            } else {
-                ago = res.getQuantityString(R.plurals.cache_offline_about_time_days, (int) (diff / (24 * 60)), (int) (diff / (24 * 60)));
-            }
-
-            offlineText.setText(res.getString(R.string.cache_offline_stored) + "\n" + ago);
+            offlineText.setText(Formatter.formatStoredAgo(cache.getUpdated()));
 
             offlineStoreDrop.setOnClickListener(dropCacheClickListener);
             offlineStoreDrop.setOnLongClickListener(null);
@@ -2344,13 +2424,29 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
     }
 
     static void updateCacheLists(final View view, final Geocache cache, final Resources res) {
-        final Set<String> listNames = new HashSet<>();
+        final SpannableStringBuilder builder = new SpannableStringBuilder();
         for (final Integer listId : cache.getLists()) {
-            final StoredList list = DataStore.getList(listId);
-            listNames.add(list.getTitle());
+            if (builder.length() > 0) {
+                builder.append(", ");
+            }
+            appendClickableList(builder, view, listId);
         }
+        builder.insert(0, res.getString(R.string.list_list_headline) + " ");
         final TextView offlineLists = ButterKnife.findById(view, R.id.offline_lists);
-        offlineLists.setText(res.getString(R.string.list_list_headline) + " " + StringUtils.join(listNames.toArray(), ", "));
+        offlineLists.setText(builder);
+        offlineLists.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    static void appendClickableList(final SpannableStringBuilder builder, final View view, final Integer listId) {
+        final int start = builder.length();
+        builder.append(DataStore.getList(listId).getTitle());
+        builder.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(final View widget) {
+                Settings.setLastDisplayedList(listId);
+                CacheListActivity.startActivityOffline(view.getContext());
+            }
+        }, start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     public Geocache getCache() {
@@ -2454,7 +2550,7 @@ public class CacheDetailActivity extends AbstractViewPagerActivity<CacheDetailAc
         personalNoteView.setText(personalNote, TextView.BufferType.SPANNABLE);
         if (StringUtils.isNotBlank(personalNote)) {
             personalNoteView.setVisibility(View.VISIBLE);
-            Linkify.addLinks(personalNoteView, Linkify.ALL);
+            Linkify.addLinks(personalNoteView, Linkify.MAP_ADDRESSES | Linkify.WEB_URLS);
         } else {
             personalNoteView.setVisibility(View.GONE);
         }

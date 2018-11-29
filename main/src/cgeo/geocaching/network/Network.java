@@ -11,6 +11,7 @@ import cgeo.geocaching.utils.TextUtils;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -20,13 +21,26 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.reactivex.Completable;
 import io.reactivex.Single;
 import io.reactivex.functions.Function;
+import okhttp3.ConnectionSpec;
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
 import okhttp3.Interceptor;
@@ -37,6 +51,7 @@ import okhttp3.Request;
 import okhttp3.Request.Builder;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.TlsVersion;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.lang3.CharEncoding;
 import org.apache.commons.lang3.StringUtils;
@@ -53,16 +68,58 @@ public final class Network {
 
     private static final Pattern PATTERN_PASSWORD = Pattern.compile("(?<=[\\?&])[Pp]ass(w(or)?d)?=[^&#$]+");
 
-    private static final OkHttpClient OK_HTTP_CLIENT = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .followRedirects(true)
-            .followSslRedirects(true)
-            .cookieJar(Cookies.cookieJar)
-            .addInterceptor(new HeadersInterceptor())
-            .addInterceptor(new LoggingInterceptor())
-            .build();
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    private static final OkHttpClient OK_HTTP_CLIENT = getNewHttpClient();
+
+    private static OkHttpClient getNewHttpClient() {
+        final OkHttpClient.Builder client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .cookieJar(Cookies.cookieJar)
+                .addInterceptor(new HeadersInterceptor())
+                .addInterceptor(new LoggingInterceptor());
+
+        return enableTls12OnPreLollipop(client).build();
+    }
+
+    private static OkHttpClient.Builder enableTls12OnPreLollipop(final OkHttpClient.Builder builder) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN && Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) {
+            try {
+                final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
+                        TrustManagerFactory.getDefaultAlgorithm());
+                trustManagerFactory.init((KeyStore) null);
+                final TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+                if (trustManagers.length != 1 || !(trustManagers[0] instanceof X509TrustManager)) {
+                    throw new IllegalStateException("Unexpected default trust managers:"
+                            + Arrays.toString(trustManagers));
+                }
+                final X509TrustManager trustManager = (X509TrustManager) trustManagers[0];
+
+                final SSLContext sc = SSLContext.getInstance("TLSv1.2");
+                sc.init(null, null, null);
+                builder.sslSocketFactory(new Tls12SocketFactory(sc.getSocketFactory()), trustManager);
+
+                final ConnectionSpec cs = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+                        .tlsVersions(TlsVersion.TLS_1_2)
+                        .build();
+
+                final List<ConnectionSpec> specs = new ArrayList<>();
+                specs.add(cs);
+                specs.add(ConnectionSpec.COMPATIBLE_TLS);
+                specs.add(ConnectionSpec.CLEARTEXT);
+
+                builder.connectionSpecs(specs);
+            } catch (final Exception exc) {
+                Log.e("Error while setting TLS 1.2", exc);
+            }
+        }
+
+        return builder;
+    }
 
     private static final MediaType MEDIA_TYPE_APPLICATION_JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -81,6 +138,18 @@ public final class Network {
 
     private Network() {
         // Utility class
+    }
+
+    /**
+     * PATCH HTTP request
+     *
+     * @param uri the URI to request
+     * @param headers the headers to add to the request
+     * @return a Single with the HTTP response, or an IOException
+     */
+    @NonNull
+    public static Single<Response> patchRequest(final String uri, final Parameters headers) {
+        return request("PATCH", uri, null, headers, null);
     }
 
     /**
@@ -109,6 +178,65 @@ public final class Network {
     }
 
     /**
+     * POST HTTP request and deserialize JSON answer
+     *
+     * @param uri the URI to request
+     * @param clazz the class to deserialize the JSON result to
+     * @param params the parameters to add to the GET request
+     * @param headers the headers to add to the GET request
+     * @param <T> the type to deserialize to
+     * @return a single with the deserialized value, or an IO exception
+     */
+    public static <T> Single<T> postRequest(final String uri, final Class<T> clazz, final Parameters params, final Parameters headers) {
+        return request("POST", uri, params, headers, null).flatMap(getResponseData).map(new Function<String, T>() {
+            @Override
+            public T apply(@NonNull final String js) throws Exception {
+                return mapper.readValue(js, clazz);
+            }
+        });
+    }
+
+    /**
+     * POST HTTP request and deserialize JSON answer
+     *
+     * @param uri the URI to request
+     * @param clazz the class to deserialize the JSON result to
+     * @param params the parameters to add to the GET request
+     * @param headers the headers to add to the GET request
+     * @param fileFieldName the name of the file field name
+     * @param fileContentType the content-type of the file
+     * @param file the file to include in the request
+     * @param <T> the type to deserialize to
+     * @return a single with the deserialized value, or an IO exception
+     */
+    public static <T> Single<T> postRequest(final String uri, final Class<T> clazz, final Parameters params, final Parameters headers,
+                                            final String fileFieldName, final String fileContentType, final File file) {
+        return postRequest(uri, params, headers, fileFieldName, fileContentType, file).flatMap(getResponseData).map(new Function<String, T>() {
+            @Override
+            public T apply(@NonNull final String js) throws Exception {
+                return mapper.readValue(js, clazz);
+            }
+        });
+    }
+
+
+    /**
+     *  POST HTTP request with Json POST DATA
+     *
+     * @param uri the URI to request
+     * @param headers http headers
+     * @param jsonObject the object to be serialized as json and added to the POST request
+     * @return a single with the HTTP response, or an IOException
+     */
+    @NonNull
+    public static Single<Response> postJsonRequest(final String uri, final Parameters headers, final Object jsonObject) throws JsonProcessingException {
+        final Builder request = new Builder().url(uri).post(RequestBody.create(MEDIA_TYPE_APPLICATION_JSON,
+                mapper.writeValueAsString(jsonObject)));
+        addHeaders(request, headers, null);
+        return RxOkHttpUtils.request(OK_HTTP_CLIENT, request.build());
+    }
+
+    /**
      *  POST HTTP request with Json POST DATA
      *
      * @param uri the URI to request
@@ -127,13 +255,14 @@ public final class Network {
      *
      * @param uri the URI to request
      * @param params the parameters to add to the POST request
+     * @param headers the headers to add to the POST request
      * @param fileFieldName the name of the file field name
      * @param fileContentType the content-type of the file
      * @param file the file to include in the request
      * @return a single with the HTTP response, or an IOException
      */
     @NonNull
-    public static Single<Response> postRequest(final String uri, final Parameters params,
+    public static Single<Response> postRequest(final String uri, final Parameters params, final Parameters headers,
             final String fileFieldName, final String fileContentType, final File file) {
         final MultipartBody.Builder entity = new MultipartBody.Builder().setType(MultipartBody.FORM);
         for (final ImmutablePair<String, String> param : params) {
@@ -142,7 +271,7 @@ public final class Network {
         entity.addFormDataPart(fileFieldName, file.getName(),
                 RequestBody.create(MediaType.parse(fileContentType), file));
         final Builder request = new Request.Builder().url(uri).post(entity.build());
-        addHeaders(request, null, null);
+        addHeaders(request, headers, null);
         return RxOkHttpUtils.request(OK_HTTP_CLIENT, request.build());
     }
 
@@ -181,7 +310,11 @@ public final class Network {
                     body.add(param.left, param.right);
                 }
             }
-            builder.post(body.build());
+            if ("PATCH".equals(method)) {
+                builder.patch(body.build());
+            } else {
+                builder.post(body.build());
+            }
         }
 
         addHeaders(builder, headers, cacheFile);
@@ -272,6 +405,26 @@ public final class Network {
         }
 
         return null;
+    }
+
+    /**
+     * Get HTTP request and deserialize JSON answer
+     *
+     * @param uri the URI to request
+     * @param clazz the class to deserialize the JSON result to
+     * @param params the parameters to add to the GET request
+     * @param headers the headers to add to the GET request
+     * @param <T> the type to deserialize to
+     * @return a single with the deserialized value, or an IO exception
+     */
+    @NonNull
+    public static <T> Single<T> getRequest(final String uri, final Class<T> clazz, @Nullable final Parameters params, @Nullable final Parameters headers) {
+         return getRequest(uri, params, headers).flatMap(getResponseData).map(new Function<String, T>() {
+             @Override
+             public T apply(@NonNull final String js) throws Exception {
+                 return mapper.readValue(js, clazz);
+             }
+         });
     }
 
     /**
